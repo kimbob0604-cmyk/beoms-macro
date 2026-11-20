@@ -90,7 +90,7 @@ launchctl bootout gui/$(id -u)/com.kimbob.beomsmacro.daily     # 끄기
 
 ## 4단계 (2026-11-20~) — 다른 주소 · 맥이 꺼져도 갱신 · 알림
 
-준비까지 끝(코드·로컬 시험). 저장소 만들기·비밀값 등록·첫 클라우드 실행은 아직.
+저장소 https://github.com/kimbob0604-cmyk/beoms-macro (공개, 2026-11-20), 주소 https://kimbob0604-cmyk.github.io/beoms-macro/ (Pages = Actions 배포). 비밀값 등록·첫 DB 올리기·첫 클라우드 실행은 아직 — 그때까지 예약 실행은 '건너뜀'으로 끝난다.
 
 ```bash
 python3 seed.py                       # (맥) 기존 대시보드 DB 에서 종목 일봉·이름·업종·수급을 macro.db 로 옮긴다. 클라우드로 넘기기 전에 한 번
@@ -107,4 +107,4 @@ python3 alert.py --dry                # 텔레그램으로 보낼 내용 미리 
 - **암호 배포**: `site_crypt.py` 가 `public/data/**` 를 파일마다 AES-256-GCM 으로 잠가 `_site/data/**.enc` 로 두고 `mu.js` 의 `LOCKED` 를 켠다. 화면은 암호를 물어 브라우저 안에서 풀고 열쇠를 그 기기에 기억한다. salt 는 `lock_salt.txt`(비밀 아님).
 - **워크플로** `.github/workflows/daily.yml`: 08:25·16:40·21:30 에 20분 간격 세 번씩(100분 안에 올렸으면 건너뜀), 수동 실행에 `force`·`dry`(올리지 않고 출처별 결과만).
 - **비밀값**(직접 등록): `KRX_API_KEY` · `FRED_KEY` · `ECOS_KEY` · `KIS_APP_KEY` · `KIS_APP_SECRET` · `MACRO_PASS` · `MACRO_DB_PASS`. 알림: `MACRO_TG_ENABLED=1` · `MACRO_TG_TOKEN` · `MACRO_TG_CHAT`. 맥에서 `sync.py`·`site_crypt.py` 를 쓰려면 이 폴더 `.env` 에도 두 암호를 적는다.
-- 남은 순서: 저장소 `beoms-macro` 만들기 → 비밀값 등록 → 맥에서 `sync.py push` → 워크플로 `dry` 로 출처 시험 → 실제 실행·배포 확인 → 맥 예약 작업 끄기 → 알림 봇·방 정해 켜기.
+- 남은 순서: 비밀값 등록(`gh secret set <이름> -R kimbob0604-cmyk/beoms-macro`) + 이 폴더 `.env` 에 `MACRO_PASS`·`MACRO_DB_PASS` → 맥에서 `sync.py push` → 워크플로 `dry` 로 출처 시험 → 실제 실행·배포 확인 → 맥 예약 작업 끄기 → 알림 봇·방 정해 켜기.
