@@ -90,7 +90,7 @@ launchctl bootout gui/$(id -u)/com.kimbob.beomsmacro.daily     # 끄기
 
 ## 4단계 (2026-11-20~) — 다른 주소 · 맥이 꺼져도 갱신 · 알림
 
-저장소 https://github.com/kimbob0604-cmyk/beoms-macro (공개, 2026-11-20), 주소 https://kimbob0604-cmyk.github.io/beoms-macro/ (Pages = Actions 배포). 비밀값 등록·첫 DB 올리기·첫 클라우드 실행은 아직 — 그때까지 예약 실행은 '건너뜀'으로 끝난다.
+저장소 https://github.com/kimbob0604-cmyk/beoms-macro (공개, 2026-11-20), 주소 https://kimbob0604-cmyk.github.io/beoms-macro/ (Pages = Actions 배포). 2026-11-20 19:43 첫 클라우드 실행·배포 성공(비밀값 7개 등록, 출처 전부 클라우드에서 됨). 이제 DB 의 기준은 클라우드다 — 맥에서는 `python3 sync.py pull` 로 받아 보고, `sync.py push` 는 다시 하지 않는다(클라우드가 쌓은 값을 덮는다).
 
 ```bash
 python3 seed.py                       # (맥) 기존 대시보드 DB 에서 종목 일봉·이름·업종·수급을 macro.db 로 옮긴다. 클라우드로 넘기기 전에 한 번
