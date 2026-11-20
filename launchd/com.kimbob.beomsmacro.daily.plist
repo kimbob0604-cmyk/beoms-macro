@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Beom's Macro 매일 갱신: 07:40(미국 마감 뒤) · 16:40(한국 마감 뒤) · 21:30(기존 대시보드가 종목 일봉을 받은 뒤 → 폭 지표 당일분)
+     설치: cp launchd/com.kimbob.beomsmacro.daily.plist ~/Library/LaunchAgents/ && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.kimbob.beomsmacro.daily.plist
+     해제: launchctl bootout gui/$(id -u)/com.kimbob.beomsmacro.daily -->
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.kimbob.beomsmacro.daily</string>
+  <key>ProgramArguments</key><array>
+    <string>/opt/homebrew/bin/python3</string><string>run_daily.py</string>
+  </array>
+  <key>WorkingDirectory</key><string>/Users/beomjun/Beom's Macro</string>
+  <key>StartCalendarInterval</key><array>
+    <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>25</integer></dict>
+    <dict><key>Hour</key><integer>16</integer><key>Minute</key><integer>40</integer></dict>
+    <dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>30</integer></dict>
+  </array>
+  <key>StandardOutPath</key><string>/Users/beomjun/Beom's Macro/logs/launchd.log</string>
+  <key>StandardErrorPath</key><string>/Users/beomjun/Beom's Macro/logs/launchd.log</string>
+</dict></plist>

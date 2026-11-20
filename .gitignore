@@ -1,0 +1,9 @@
+.env
+db/*.db*
+logs/
+__pycache__/
+public/data/
+.DS_Store
+.cache/
+_site/
+db/sync.json

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오늘 · Beom's Macro</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="css/macro.css">
+<script>try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+<main>
+  <div class="page-head"><h1>오늘 <span class="use flow">흐름</span></h1><p>지금 어느 국면인지, 오늘 무엇이 바뀌었는지, 무엇이 움직였는지</p></div>
+  <div id="stale"></div>
+  <div class="grid2">
+    <section class="card" id="regime"></section>
+    <section class="card" id="signals"></section>
+  </div>
+  <div class="grid2">
+    <section class="card" id="changes"></section>
+    <section class="card" id="us2kr"></section>
+  </div>
+  <section class="card" id="monitor"></section>
+  <p class="foot" id="foot"></p>
+</main>
+<script src="js/mu.js"></script>
+<script src="js/today.js"></script>
+</body>
+</html>

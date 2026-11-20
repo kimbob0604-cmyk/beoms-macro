@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>비중 · Beom's Macro</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="css/macro.css">
+<script>try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+<main>
+  <div class="page-head"><h1>비중 <span class="use weight">비중</span></h1><p>주식을 늘릴 때인가 줄일 때인가 — 신용·금리·유동성·경기처럼 천천히 움직이는 것들</p></div>
+  <div class="grid2">
+    <section class="card" id="regime"></section>
+    <section class="card" id="mine"></section>
+  </div>
+  <div class="grid2">
+    <section class="card" id="credit"></section>
+    <section class="card" id="liq"></section>
+  </div>
+  <div class="grid2">
+    <section class="card" id="rates"></section>
+    <section class="card" id="fund"></section>
+  </div>
+  <div class="grid2">
+    <section class="card" id="kr"></section>
+    <section class="card" id="val"></section>
+  </div>
+  <section class="card" id="eco"></section>
+  <p class="foot">자료: FRED(ICE BofA 스프레드·연준 대차대조표·국채 금리) · 한국은행 ECOS · multpl.com. ICE 스프레드는 FRED 가 최근 3년치만 내주므로 백분위도 최근 3년 기준이다. 이 화면은 정보 정리용이며 비중을 권하지 않는다.</p>
+</main>
+<script src="js/mu.js"></script>
+<script src="js/mchart.js"></script>
+<script src="js/weight.js"></script>
+</body>
+</html>

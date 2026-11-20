@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>섹터 · Beom's Macro</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="css/macro.css">
+<script>try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+<main>
+  <div class="page-head"><h1>섹터·스타일 <span class="use sector">섹터</span></h1><p>어느 지역·스타일·업종이 주도하고, 어느 업종이 가장 눌렸나</p></div>
+  <div class="grid2">
+    <section class="card" id="ratios"></section>
+    <section class="card" id="ratio-chart"></section>
+  </div>
+  <section class="card" id="regions"></section>
+  <section class="card" id="krmap"></section>
+  <section class="card" id="stocks" hidden></section>
+  <p class="foot">업종은 네이버 업종 분류(5종목 이상), 보통주만. 업종 수익률은 시총 가중. 업종별 이익수정비율은 2단계에서 추가된다.</p>
+</main>
+<script src="js/mu.js"></script>
+<script src="js/mchart.js"></script>
+<script src="js/sector.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+ "_note": "AI 크레딧 5년 CDS 보도값 입력. 개별 기업 CDS 는 무료 자동 출처가 없어 기사에 나온 값을 날짜·출처와 함께 적는다. 새 값은 맨 아래에 한 줄 추가하면 된다(같은 이름은 가장 최근 날짜가 화면에 뜬다). approx: 기사에 날짜가 정확히 없어 대략인 경우 true.",
+ "entries": [
+  {"name": "오라클", "key": "orcl", "date": "2026-10-15", "bp": 288, "source": "Securitas Global (사상 최고 종가)", "url": "https://www.securitasglobal.com/risk-perspectives/oracle-cds-record-288-basis-points-ai-debt/"},
+  {"name": "오라클", "key": "orcl", "date": "2026-11-06", "bp": 298, "source": "TokenPost 보도 (11월 초)", "url": "https://www.tokenpost.com/news/investing/36133", "approx": true},
+  {"name": "코어위브", "key": "crwv", "date": "2026-11-05", "bp": 1289, "source": "CNBC (도이체방크 집계, 장중 고점)", "url": "https://www.cnbc.com/2026/11/06/coreweave-bond-yield-tops-16percent-as-ai-credit-stress-rises.html"},
+  {"name": "코어위브", "key": "crwv", "date": "2026-11-06", "bp": 1155, "source": "CNBC (도이체방크 집계)", "url": "https://www.cnbc.com/2026/11/06/coreweave-bond-yield-tops-16percent-as-ai-credit-stress-rises.html"},
+  {"name": "엔비디아", "key": "nvda", "date": "2026-11-06", "bp": 139, "source": "TokenPost 보도 (11월 초)", "url": "https://www.tokenpost.com/news/investing/36133", "approx": true}
+ ]
+}

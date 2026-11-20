@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>페어·상관 · Beom's Macro</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="css/macro.css">
+<script>try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+<main>
+  <div class="page-head"><h1>페어·상관 <span class="use flow">흐름</span> <span class="use sector">섹터</span> <span class="use timing">타이밍</span></h1><p>아무 두 계열이나 겹쳐 놓고 상관·선행후행·괴리를 본다</p></div>
+  <section class="card">
+    <div class="frow">
+      <input type="text" id="a" list="cat" placeholder="계열 A (이름으로 찾기)" style="width:230px">
+      <span class="muted">vs</span>
+      <input type="text" id="b" list="cat" placeholder="계열 B" style="width:230px">
+      <datalist id="cat"></datalist>
+      <span class="seg" id="period"></span>
+    </div>
+    <div class="frow" id="presets"></div>
+    <div id="overlay"></div>
+    <div class="stat" id="stats"></div>
+    <div class="read" id="read"></div>
+  </section>
+  <div class="grid2">
+    <section class="card"><h2>롤링 상관 (60일, 일간 수익률)</h2><p class="sub">관계가 꾸준한지, 최근에 붙었는지·풀렸는지.</p><div id="roll"></div></section>
+    <section class="card"><h2>선행·후행 (교차상관)</h2><p class="sub">막대가 오른쪽(+)에서 높으면 A가 먼저, 왼쪽(−)에서 높으면 B가 먼저 움직인다.</p><div id="lead"></div></section>
+  </div>
+  <div class="grid2">
+    <section class="card"><h2>괴리 (가격비의 z-점수)</h2><p class="sub">log(A÷B)가 최근 120일 평균에서 얼마나 벗어났나. ±2 밖이면 한쪽이 먼저 움직인 것.</p><div id="gap"></div></section>
+    <section class="card" id="scan-card"><h2>닮은 지표 찾기</h2><p class="sub">계열 A와 일간 수익률 상관이 높은 순서(선택한 기간). 지수·ETF·매크로 계열과 한국 시총 상위 100종목을 훑는다.</p>
+      <div class="frow"><button class="chip" id="scan">계열 A 기준으로 찾기</button><span class="muted small" id="scan-msg"></span></div><div id="scan-out"></div>
+      <p class="note">수백 개를 훑으면 우연히 맞는 것도 나온다. 왜 이어지는지 설명이 되는 것만 쓴다.</p></section>
+  </div>
+  <section class="card" id="heat"></section>
+  <p class="foot">같은 날짜에 둘 다 값이 있는 날만 맞춘다(휴장일·시차는 보정하지 않음). 수준 상관은 같은 방향 추세만 있어도 높게 나오므로 수익률 상관을 같이 본다.</p>
+</main>
+<script src="js/mu.js"></script>
+<script src="js/mchart.js"></script>
+<script src="js/pair.js"></script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>파생·평단 · Beom's Macro</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="css/macro.css">
+<script>try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+<main>
+  <div class="page-head"><h1>파생·평단 <span class="use timing">타이밍</span> <span class="use flow">흐름</span> <span class="use sector">섹터</span></h1><p>누가 어떤 가격에 물려 있나, 어떤 포지션이 풀리면 수급이 튀나 — 선물·옵션·대차·공매도·평균 단가·롱숏 페어</p></div>
+  <div class="grid2">
+    <section class="card" id="basis"></section>
+    <section class="card" id="loan"></section>
+  </div>
+  <section class="card" id="shorts"></section>
+  <section class="card" id="vwap"></section>
+  <div class="grid2">
+    <section class="card" id="k200opt"></section>
+    <section class="card" id="k200oi"></section>
+  </div>
+  <div class="grid2">
+    <section class="card" id="usopt"></section>
+    <section class="card" id="si"></section>
+  </div>
+  <section class="card" id="pairs"></section>
+  <div class="grid2">
+    <section class="card" id="crowd"></section>
+    <section class="card" id="swap"></section>
+  </div>
+  <p class="foot">자료: KRX Open API(선물·옵션 일별, 다음 날 아침) · 한국투자증권 API(대차·공매도·선물 수급, 조회 전용) · 기존 종목 일봉·수급 DB(VWAP·평단) · Yahoo Finance 옵션 체인 · FINRA(공매도 잔고) · CBOE.
+    받을 수 없는 것: 대차 수수료, 외국계 창구의 스왑(CFD·TRS) 물량, 금리 스왑, 공식 통화 스왑포인트 — 무료 출처가 없다.</p>
+</main>
+<script src="js/mu.js"></script>
+<script src="js/mchart.js"></script>
+<script src="js/deriv.js"></script>
+</body>
+</html>

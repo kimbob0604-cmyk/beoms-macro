@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>지표 사전 · Beom's Macro</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="css/macro.css">
+<script>try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+<main>
+  <div class="page-head"><h1>지표 사전</h1><p>지표마다 어디에 쓰는지, 어떻게 계산하는지, 어떻게 읽는지, 어디서 언제 받는지</p></div>
+  <section class="card" id="uses"></section>
+  <section class="card" id="items"></section>
+  <section class="card" id="series"></section>
+  <section class="card" id="jobs"></section>
+</main>
+<script src="js/mu.js"></script>
+<script>
+(async () => {
+  MU.shell('glossary');
+  const { use, esc } = MU;
+  let G, S;
+  try { [G, S] = await Promise.all([MU.get('glossary.json'), MU.get('status.json')]); } catch (e) { return MU.fail(e); }
+  MU.built(G.built);
+  document.getElementById('uses').innerHTML = `<h2>용도 배지 — 네 가지 질문</h2>
+    <table class="tbl"><thead><tr><th>배지</th><th class="l">질문</th><th class="l">보는 주기</th><th class="l">어디서</th></tr></thead><tbody>
+    <tr><td>${use('흐름')}</td><td class="l">오늘·이번 주 장에서 무슨 일이 일어나고 있나</td><td class="l">매일</td><td class="l">오늘 탭, 페어·상관 탭</td></tr>
+    <tr><td>${use('타이밍')}</td><td class="l">지금이 살 만한 자리인가, 과열인가</td><td class="l">며칠~몇 주</td><td class="l">타이밍 탭</td></tr>
+    <tr><td>${use('비중')}</td><td class="l">주식을 얼마나 들고 갈 국면인가</td><td class="l">몇 주~몇 달</td><td class="l">오늘 탭의 국면 (비중 탭은 2단계)</td></tr>
+    <tr><td>${use('섹터')}</td><td class="l">어느 업종·스타일을 볼지</td><td class="l">몇 주~몇 달</td><td class="l">섹터 탭</td></tr></tbody></table>
+    <p class="note">읽는 순서: 흐름 → 비중(국면) → 타이밍 → 섹터. 국면이 나쁠 때의 과매도 신호와 좋을 때의 과매도 신호는 무게가 다르다.</p>`;
+  document.getElementById('items').innerHTML = `<h2>지표 정의</h2><div class="scroll-x"><table class="tbl"><thead><tr><th>지표</th><th class="l">용도</th><th class="l">계산</th><th class="l">읽는 법</th><th class="l">주의</th><th class="l">출처·주기</th></tr></thead>
+    <tbody>${G.items.map(g => `<tr><td class="l b" style="min-width:130px">${esc(g.name)}</td><td class="l">${use(g.use)}</td><td class="l" style="min-width:240px">${esc(g.formula)}</td><td class="l" style="min-width:220px">${esc(g.read)}</td><td class="l muted" style="min-width:160px">${esc(g.caution || '')}</td><td class="l muted small">${esc(g.src)}</td></tr>`).join('')}</tbody></table></div>`;
+  document.getElementById('series').innerHTML = `<h2>쌓고 있는 계열 (${G.series.length}개)</h2><p class="sub">기준일이 5일 넘게 지난 계열은 '늦음'으로 표시된다.</p>
+    <div class="scroll-x"><table class="tbl"><thead><tr><th>계열</th><th class="l">묶음</th><th class="l">용도</th><th class="l">출처</th><th>주기</th><th>기준일</th></tr></thead>
+    <tbody>${G.series.map(s => `<tr><td>${esc(s.name)}</td><td class="l muted">${esc(s.grp)}</td><td class="l">${use(s.use)}</td><td class="l muted small">${esc(s.source)}</td><td>${esc(s.freq)}</td><td class="${MU.days(s.asof) > 5 ? 'b' : 'muted'}">${esc(s.asof)}${MU.days(s.asof) > 5 ? ' 늦음' : ''}</td></tr>`).join('')}</tbody></table></div>`;
+  document.getElementById('jobs').innerHTML = `<h2>수집 기록</h2><table class="tbl"><thead><tr><th>작업</th><th>마지막 실행</th><th>결과</th><th class="l">내용</th></tr></thead>
+    <tbody>${Object.entries(S.jobs).map(([k, j]) => `<tr><td>${esc(k)}</td><td>${esc(j.at)}</td><td class="${j.ok ? '' : 'b up'}">${j.ok ? '정상' : '실패'}</td><td class="l muted small">${esc(j.msg)}</td></tr>`).join('')}</tbody></table>`;
+})();
+</script>
+</body>
+</html>
