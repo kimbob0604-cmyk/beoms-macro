@@ -52,11 +52,13 @@ python3 build.py                      # 화면용 JSON (build2.py = 비중·수�
 
 ## 예약 (launchd)
 
-`launchd/com.kimbob.beomsmacro.daily.plist` — 매일 08:25 · 16:40 · 21:30 에 `run_daily.py`. 로그 `logs/`.
+2026-11-20 부터 **꺼 둠** — 수집은 클라우드(`.github/workflows/daily.yml`)가 같은 시각에 한다. 맥에서 최신을 보려면:
 
 ```bash
-launchctl bootout gui/$(id -u)/com.kimbob.beomsmacro.daily     # 끄기
+python3 sync.py pull && python3 run_daily.py --build      # 클라우드 DB 를 받아 로컬 화면(8770)을 다시 만든다
 ```
+
+맥 예약을 다시 켜야 할 때(클라우드가 막혔을 때 등): `cp launchd/com.kimbob.beomsmacro.daily.plist ~/Library/LaunchAgents/ && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.kimbob.beomsmacro.daily.plist` — 단, 맥에서 모은 값은 `sync.py push` 를 해야 클라우드로 간다(클라우드가 그 사이 쌓은 값은 덮인다).
 
 ## 2단계 (2026-11-19)
 
