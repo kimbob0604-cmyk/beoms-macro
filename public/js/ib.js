@@ -13,6 +13,10 @@
   const raiWord = R.last <= R.lo ? '극단적 위험 회피' : R.last <= -1 ? '위험 회피' : R.last >= R.hi ? '극단적 위험선호' : R.last >= 1 ? '위험선호' : '중립';
   const peWord = P.last <= 20 ? '패닉' : P.last >= 80 ? '유포리아' : P.last <= 35 ? '패닉 쪽' : P.last >= 65 ? '유포리아 쪽' : '중간';
 
+  // 하우스 로고 (public/img/ib/*.png). 없는 이름은 글자만
+  const LOGO = { '골드만삭스': 'gs.png', '골드만': 'gs.png', 'BofA': 'bofa.png', '씨티': 'citi.png', '모건스탠리': 'ms.jpg', '도이체': 'db.png' };
+  const houseHtml = h => `<div class="house">${h.split(/\s*·\s*/).map(n => `<span class="hs">${LOGO[n] ? `<img class="hlogo" src="img/ib/${LOGO[n]}" alt="" width="22" height="22">` : ''}<b>${esc(n)}</b></span>`).join('')}</div>`;
+
   // 하우스별 요약
   const rows = [
     ['골드만삭스', '위험선호 지표 (RAI)', '위험자산 ÷ 안전자산 쌍 20여 개의 상대 성과를 표준화해 하나로', '쌍 13개, 3개월 상대수익률의 z-점수 평균', `<b>${pm(R.last, 2, '')}</b> · ${raiWord}`, '#rai', '아래'],
@@ -27,7 +31,7 @@
   ];
   $('summary').innerHTML = `<h2>하우스별 지표 — 원래 정의와 우리가 만든 범위</h2><p class="sub">'지금 값'은 이 사이트가 계산한 값이다. 각 회사가 발표하는 숫자가 아니다.</p>
     <div class="scroll-x"><table class="tbl"><thead><tr><th>하우스</th><th class="l">지표</th><th class="l">원래 무엇으로 만드나</th><th class="l">우리가 만든 범위</th><th class="l">지금 값</th><th></th></tr></thead><tbody>
-    ${rows.map(([h, n, o, w, v, u, t]) => `<tr><td>${esc(h)}</td><td class="l"><b>${esc(n)}</b></td><td class="l small">${esc(o)}</td><td class="l small">${esc(w)}</td><td class="l">${v}</td><td>${u ? `<a class="lnk small" href="${u}">${t} →</a>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+    ${rows.map(([h, n, o, w, v, u, t]) => `<tr><td>${houseHtml(h)}</td><td class="l"><b>${esc(n)}</b></td><td class="l small">${esc(o)}</td><td class="l small">${esc(w)}</td><td class="l">${v}</td><td>${u ? `<a class="lnk small" href="${u}">${t} →</a>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
 
   // 위험선호 지수
   const zs = Object.entries(R.parts).sort((a, b) => (a[1] ?? 0) - (b[1] ?? 0));

@@ -71,7 +71,7 @@
     // 지금 신호와 반대쪽에 있는 가장 가까운 가격
     const next = x => {
       const up = x.trig.filter(t => !t.on).sort((a, b) => a.dist - b.dist)[0], dn = x.trig.filter(t => t.on).sort((a, b) => b.dist - a.dist)[0];
-      return `${up ? `<b>${fmt(up.level, x.dec)}</b>(${pm(up.dist)}) 위로 올라서면 ${up.n}일 신호가 매수로 바뀐다` : '네 신호가 모두 매수다'}${dn ? `, <b>${fmt(dn.level, x.dec)}</b>(${pm(dn.dist)}) 아래로 내려가면 ${dn.n}일 신호가 매도로 바뀐다` : ' — 네 신호가 모두 매도라 더 팔 것이 없다'}`;
+      return `<span class="muted">내일 종가 기준 — </span>${up ? `<b>${fmt(up.level, x.dec)}</b>(${pm(up.dist)}) 위로 올라서면 ${up.n}일 신호가 매수로 바뀐다` : '네 신호가 모두 매수다'}${dn ? `, <b>${fmt(dn.level, x.dec)}</b>(${pm(dn.dist)}) 아래로 내려가면 ${dn.n}일 신호가 매도로 바뀐다` : ' — 네 신호가 모두 매도라 더 팔 것이 없다'}`;
     };
     const beat = e => ['1개월', '3개월', '6개월', '12개월'].filter(h => e[h].mean != null && e[h].mean > e[h].base).length;
     const cor = f => f.map(x => `${esc(x.name)} <b>${num(x.corr)}</b>`).join(' · ');
