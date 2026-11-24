@@ -33,9 +33,10 @@
     <p class="note">읽는 순서: 흐름 → 비중(국면) → 타이밍 → 섹터. 국면이 나쁠 때의 과매도 신호와 좋을 때의 과매도 신호는 무게가 다르다.</p>`;
   document.getElementById('items').innerHTML = `<h2>지표 정의</h2><div class="scroll-x"><table class="tbl"><thead><tr><th>지표</th><th class="l">용도</th><th class="l">계산</th><th class="l">읽는 법</th><th class="l">주의</th><th class="l">출처·주기</th></tr></thead>
     <tbody>${G.items.map(g => `<tr><td class="l b" style="min-width:130px">${esc(g.name)}</td><td class="l">${use(g.use)}</td><td class="l" style="min-width:240px">${esc(g.formula)}</td><td class="l" style="min-width:220px">${esc(g.read)}</td><td class="l muted" style="min-width:160px">${esc(g.caution || '')}</td><td class="l muted small">${esc(g.src)}</td></tr>`).join('')}</tbody></table></div>`;
-  document.getElementById('series').innerHTML = `<h2>쌓고 있는 계열 (${G.series.length}개)</h2><p class="sub">기준일이 5일 넘게 지난 계열은 '늦음'으로 표시된다.</p>
+  const LATE = { '매일': 5, '주간': 12, '격주': 35, '월간': 100, '분기': 250 };   // build.py STALE_DAYS 와 같게
+  document.getElementById('series').innerHTML = `<h2>쌓고 있는 계열 (${G.series.length}개)</h2><p class="sub">기준일이 주기보다 많이 지난 계열은 '늦음'으로 표시된다(매일 5일 · 주간 12일 · 격주 35일 · 월간 100일 · 분기 250일).</p>
     <div class="scroll-x"><table class="tbl"><thead><tr><th>계열</th><th class="l">묶음</th><th class="l">용도</th><th class="l">출처</th><th>주기</th><th>기준일</th></tr></thead>
-    <tbody>${G.series.map(s => `<tr><td>${esc(s.name)}</td><td class="l muted">${esc(s.grp)}</td><td class="l">${use(s.use)}</td><td class="l muted small">${esc(s.source)}</td><td>${esc(s.freq)}</td><td class="${MU.days(s.asof) > 5 ? 'b' : 'muted'}">${esc(s.asof)}${MU.days(s.asof) > 5 ? ' 늦음' : ''}</td></tr>`).join('')}</tbody></table></div>`;
+    <tbody>${G.series.map(s => `<tr><td>${esc(s.name)}</td><td class="l muted">${esc(s.grp)}</td><td class="l">${use(s.use)}</td><td class="l muted small">${esc(s.source)}</td><td>${esc(s.freq)}</td><td class="${MU.days(s.asof) > (LATE[s.freq] ?? 5) ? 'b' : 'muted'}">${esc(MU.md(s.asof))}${MU.days(s.asof) > (LATE[s.freq] ?? 5) ? ' 늦음' : ''}</td></tr>`).join('')}</tbody></table></div>`;
   document.getElementById('jobs').innerHTML = `<h2>수집 기록</h2><table class="tbl"><thead><tr><th>작업</th><th>마지막 실행</th><th>결과</th><th class="l">내용</th></tr></thead>
     <tbody>${Object.entries(S.jobs).map(([k, j]) => `<tr><td>${esc(k)}</td><td>${esc(j.at)}</td><td class="${j.ok ? '' : 'b up'}">${j.ok ? '정상' : '실패'}</td><td class="l muted small">${esc(j.msg)}</td></tr>`).join('')}</tbody></table>`;
 })();

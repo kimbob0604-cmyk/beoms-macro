@@ -43,7 +43,14 @@ def volume(c):
     kw = {'start': START} if ('--full' in sys.argv or have < 300) else {'period': '3mo'}
     v = yf.download(['^IXIC', '^NYA'], interval='1d', progress=False, auto_adjust=True, threads=True, **kw)['Volume'].dropna()
     v = v[(v['^IXIC'] > 0) & (v['^NYA'] > 0)]
-    r = (v['^IXIC'] / v['^NYA']).iloc[:-1]            # 마지막 날은 장중 값일 수 있어 뺀다
+    r = v['^IXIC'] / v['^NYA']
+    # 미국 장중에 돌면 오늘 줄이 장중 값이라 뺀다. 예전엔 마지막 줄을 늘 뺐는데, 최신일 NYSE 거래량이 0으로 와 위에서 걸러지면
+    # 멀쩡한 전날까지 빠졌다(2026-11-24: 11/20 이 안 들어가 11/19 에 멈춤).
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    now = datetime.now(ZoneInfo('America/New_York'))
+    if len(r) and r.index[-1].date() == now.date() and (now.hour, now.minute) < (16, 30):
+        r = r.iloc[:-1]
     return store.put(c, 'mkt:vol_ratio', [(str(i.date()), float(x)) for i, x in r.items()], name='나스닥 ÷ NYSE 거래량', grp='미국 수급', unit='배', source='Yahoo Finance', freq='매일', use='타이밍', diff=1, dec=2)
 
 

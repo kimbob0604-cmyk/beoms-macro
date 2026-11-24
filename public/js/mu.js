@@ -75,7 +75,19 @@ const MU = (() => {
   const days = d => Math.round((Date.now() - new Date(d + 'T00:00:00').getTime()) / 864e5);
   // late: 며칠 넘게 지나면 '늦음' (매일 5 · 주간 12 · 월간 100 · 분기 250)
   // 날짜 표기: 2026-11-23 → 11/23 (사용자 요청 2026-11-24)
-  const md = d => { const m = String(d ?? '').match(/^\d{4}-(\d{2})-(\d{2})/); return m ? `${+m[1]}/${+m[2]}` : String(d ?? ''); };
+  const THIS_YEAR = String(new Date().getFullYear());
+  const md1 = (y, m, d) => y === THIS_YEAR ? `${+m}/${+d}` : `${y}/${+m}/${+d}`;   // 올해는 11/23, 다른 해는 2025/1/31
+  const md = d => { const m = String(d ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? md1(m[1], m[2], m[3]) : String(d ?? ''); };
+  // 화면에 남은 2026-11-23 꼴 글자(빌드가 만든 문장·표·툴팁)도 11/23 으로 바꾼다 — 입력칸·스크립트는 건드리지 않는다
+  const DATE_RE = /\b(\d{4})-(\d{2})-(\d{2})\b/g;
+  const fixDates = root => {
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => /^(SCRIPT|STYLE|TEXTAREA|INPUT)$/.test(n.parentNode?.nodeName) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+    for (let n; (n = w.nextNode());) if (DATE_RE.test(n.nodeValue)) { DATE_RE.lastIndex = 0; n.nodeValue = n.nodeValue.replace(DATE_RE, (_, y, m, d) => md1(y, m, d)); } else DATE_RE.lastIndex = 0;
+  };
+  if (typeof MutationObserver !== 'undefined') document.addEventListener('DOMContentLoaded', () => {
+    fixDates(document.body);
+    new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) fixDates(n); else if (n.nodeType === 3 && n.parentNode) fixDates(n.parentNode); }).observe(document.body, { childList: true, subtree: true });
+  });
   const asof = (d, late = 5) => d ? `<span class="asof${days(d) > late ? ' late' : ''}">${esc(md(d))} 기준${days(d) > late ? ' · 늦음' : ''}</span>` : '';
   const pm = (v, d = 1, u = '%') => v == null ? '–' : `${v > 0 ? '+' : ''}${num(v, d)}${u}`;
   // 0~100 점수 막대. bad='hi' 면 높을수록 경고색
