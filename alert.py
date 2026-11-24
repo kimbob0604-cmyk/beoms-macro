@@ -8,6 +8,7 @@
   · 정기 보고: 매일 08·16·20시(한국시간, 그 시각부터 90분 안의 첫 실행) — 머리 글(국면·바닥/과열 신호·지금 숫자·점검) 뒤에
     주요 차트 10장(snap.py, 다크 모드·최근 6개월)을 한 장씩, 장마다 '값 — 일간 (MoM / QoQ / YoY)' + 해석 한 줄.
   · 수시 알림: 바닥 신호나 과열 신호가 '새로 켜졌을 때'만(켜진 조건 이름으로 비교). 바닥 신호 개수·ADR 차트 2장을 붙인다.
+  · 그룹방(MACRO_TG_GROUP 이 있을 때): 정기 보고만 같은 차트로, 사이트 링크·점검 줄은 뺀다(미리보기는 본인에게만, --preview --group 이면 그룹방에도).
   · 그 밖의 '오늘 바뀐 것'·수집 실패는 따로 보내지 않고 정기 보고에만 짧게 싣는다.
 같은 보고·신호는 한 번만 — macro.db 의 alerted 표(보고 열쇠)와 kv 표(sig_on: 지난번 켜진 신호)에 적어 둔다.
 """
@@ -86,7 +87,7 @@ def fail_lines(S):
     return out
 
 
-def report_text(T, S, shots, now, tag=''):
+def report_text(T, S, shots, now, tag='', link=True):
     B, H = T['bottom'], T['hot']
     L = [head(now, tag), '', regime_line(T), '', '<b>지금 숫자</b>', *snapshot(T)]
     if B['on']:
@@ -98,7 +99,8 @@ def report_text(T, S, shots, now, tag=''):
     bad = fail_lines(S)
     if bad:
         L += ['', '<b>점검</b>', *bad]
-    L += ['', f'<a href="{SITE}">사이트에서 보기</a>']
+    if link:
+        L += ['', f'<a href="{SITE}">사이트에서 보기</a>']
     text = '\n'.join(L)
     return text if len(text) <= 4000 else text[:3990] + '…'
 
@@ -118,9 +120,9 @@ def tg(method, **kw):
     return requests.post(f"https://api.telegram.org/bot{config.key('MACRO_TG_TOKEN')}/{method}", timeout=60, **kw)
 
 
-def send(text, shots=()):
+def send(text, shots=(), chat=None):
     """글 한 건 뒤에 차트를 한 장씩 따로 보낸다(앨범으로 묶으면 작게 뭉개져서 — 2026-11-24 사용자). 사진 설명: 첫 줄(숫자 변화)은 굵게"""
-    chat = config.key('MACRO_TG_CHAT')
+    chat = chat or config.key('MACRO_TG_CHAT')
     r = tg('sendMessage', json={'chat_id': chat, 'text': text, 'parse_mode': 'HTML', 'disable_web_page_preview': True})
     if r.status_code != 200:
         return r
@@ -196,6 +198,12 @@ def main():
             print('alert: 보내기 실패', kind, r.status_code, r.text[:200])
             continue
         sent += 1
+        group = config.key('MACRO_TG_GROUP')       # 그룹방(2026-11-24 사용자): 정기 보고만, 사이트 링크·점검 줄 없이
+        if kind == 'report' and group and (not preview or '--group' in sys.argv):
+            rg = send(report_text(T, {'jobs': {}}, shots, now, tag, link=False), shots, chat=group)
+            if rg.status_code != 200:
+                store.log(c, 'alert', False, f'group {rg.status_code} {rg.text[:120]}')
+                print('alert: 그룹방 보내기 실패', rg.status_code, rg.text[:200])
         if kind == 'report' and slot:
             c.execute('INSERT OR IGNORE INTO alerted VALUES (?,?)', (slot, now.isoformat(timespec='seconds')))
     if not dry and not preview:
