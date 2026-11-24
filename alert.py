@@ -6,7 +6,7 @@
 
 보내는 것 (2026-11-24 사용자 요청으로 바꿈)
   · 정기 보고: 매일 08·16·20시(한국시간, 그 시각부터 90분 안의 첫 실행) — 머리 글(국면·바닥/과열 신호·지금 숫자·점검) 뒤에
-    주요 차트 10장(snap.py 가 화면을 찍음)을 앨범으로, 장마다 한 줄 설명.
+    주요 차트 10장(snap.py, 다크 모드·최근 6개월)을 한 장씩, 장마다 '값 — 일간 (MoM / QoQ / YoY)' + 해석 한 줄.
   · 수시 알림: 바닥 신호나 과열 신호가 '새로 켜졌을 때'만(켜진 조건 이름으로 비교). 바닥 신호 개수·ADR 차트 2장을 붙인다.
   · 그 밖의 '오늘 바뀐 것'·수집 실패는 따로 보내지 않고 정기 보고에만 짧게 싣는다.
 같은 보고·신호는 한 번만 — macro.db 의 alerted 표(보고 열쇠)와 kv 표(sig_on: 지난번 켜진 신호)에 적어 둔다.
@@ -94,8 +94,7 @@ def report_text(T, S, shots, now, tag=''):
     if H['on']:
         L.append(f"<i>켜진 과열 신호: {esc(', '.join(H['on']))}</i>")
     if shots:
-        L += ['', '<b>차트</b> (아래 앨범)']
-        L += [f"{i}. {esc(c)}" for i, (_, c) in enumerate(shots, 1)]
+        L += ['', f'<i>아래 차트 {len(shots)}장 — 최근 6개월, 장마다 일간·MoM·QoQ·YoY 변화</i>']
     bad = fail_lines(S)
     if bad:
         L += ['', '<b>점검</b>', *bad]
@@ -120,17 +119,19 @@ def tg(method, **kw):
 
 
 def send(text, shots=()):
+    """글 한 건 뒤에 차트를 한 장씩 따로 보낸다(앨범으로 묶으면 작게 뭉개져서 — 2026-11-24 사용자). 사진 설명: 첫 줄(숫자 변화)은 굵게"""
     chat = config.key('MACRO_TG_CHAT')
     r = tg('sendMessage', json={'chat_id': chat, 'text': text, 'parse_mode': 'HTML', 'disable_web_page_preview': True})
-    if r.status_code != 200 or not shots:
+    if r.status_code != 200:
         return r
-    media, files = [], {}
-    for i, (f, cap) in enumerate(list(shots)[:10]):
-        files[f'p{i}'] = (Path(f).name, Path(f).read_bytes(), 'image/png')
-        media.append({'type': 'photo', 'media': f'attach://p{i}', 'caption': f'{i + 1}. {cap}'[:1000]})
-    if len(media) == 1:
-        return tg('sendPhoto', data={'chat_id': chat, 'caption': media[0]['caption']}, files={'photo': files['p0']})
-    return tg('sendMediaGroup', data={'chat_id': chat, 'media': json.dumps(media, ensure_ascii=False)}, files=files)
+    for i, (f, cap) in enumerate(shots, 1):
+        first, _, rest = cap.partition('\n')
+        html_cap = f'<b>{i}. {esc(first)}</b>' + (f'\n{esc(rest)}' if rest else '')
+        rp = tg('sendPhoto', data={'chat_id': chat, 'caption': html_cap[:1020], 'parse_mode': 'HTML'},
+                files={'photo': (Path(f).name, Path(f).read_bytes(), 'image/png')})
+        if rp.status_code != 200:
+            print(f'alert: 사진 {i} 실패 {rp.status_code} {rp.text[:120]}')
+    return r
 
 
 def due_slot(c, now):
@@ -179,7 +180,7 @@ def main():
                 shots = snap.shoot()
                 text = report_text(T, S, shots, now, tag)
             else:
-                shots = snap.shoot([(p, s, n) for p, s, n in want])
+                shots = snap.shoot([x for x in snap.SHOTS if (x[0], x[1]) in {(p, s) for p, s, _ in want}])
                 shots = [(f, cap) for f, cap in shots]
         except Exception as e:                       # 캡처가 안 되면 글만 보낸다
             print(f'alert: 캡처 실패 — {type(e).__name__}: {str(e)[:160]}')

@@ -18,18 +18,19 @@ from pathlib import Path
 import config
 
 OUT = config.ROOT / '_snap'
-# (화면, 칸 id, 짧은 이름) — 텔레그램 앨범은 10장까지
+ZOOM = 180            # 최근 며칠만 보이게 찍을지 (2026-11-24 사용자: 당겨서 최근 변화를 보이게)
+# (화면, 칸 id, 짧은 이름, 변화 표시 방식, 단위, 몇 번째 계열) — pct: 변화율(%), diff: 차이(단위)
 SHOTS = [
-    ('timing', 'c-count', '바닥 신호 개수'),
-    ('timing', 'c-adr', 'ADR (20일)'),
-    ('timing', 'c-vix', 'VIX 기간구조'),
-    ('timing', 'fg-kr', '한국판 공탐지수'),
-    ('ib', 'rai', '위험선호 지수'),
-    ('ib', 'gb', '글로벌 폭'),
-    ('flow', 'cta', 'CTA 포지션'),
-    ('flow', 'credit', '한국 신용잔고'),
-    ('credit', 'stress', 'AI 크레딧 스트레스'),
-    ('weight', 'credit', '미국 신용 스프레드'),
+    ('timing', 'c-count', '바닥 신호 개수', 'diff', '개', 0),
+    ('timing', 'c-adr', 'ADR (20일)', 'pct', '', 0),
+    ('timing', 'c-vix', 'VIX', 'pct', '', 1),
+    ('timing', 'c-vkospi', 'VKOSPI', 'pct', '', 0),
+    ('timing', 'fg-kr', '한국판 공탐지수', 'diff', 'pt', 0),
+    ('ib', 'rai', '위험선호 지수', 'diff', '', 0),
+    ('flow', 'cta', 'CTA S&P500 포지션', 'diff', '%p', 0),
+    ('flow', 'credit', '한국 신용잔고', 'pct', '', 0),
+    ('credit', 'stress', 'AI 크레딧 스트레스', 'diff', 'pt', 0),
+    ('weight', 'credit', '하이일드 스프레드', 'pct', '', 0),
 ]
 
 
@@ -59,8 +60,41 @@ def caption(text: str, name: str) -> str:
     return f'{name} — {first}' if first else name
 
 
+LEVEL_UNIT = {'CTA S&P500 포지션': '%', '하이일드 스프레드': '%p', '한국 신용잔고': '조원', 'ADR (20일)': '%'}
+
+
+def _at(d, v, days):
+    """마지막 날에서 days 일 전(그날 또는 그 전 가장 가까운 값)"""
+    from datetime import date, timedelta
+    last = date.fromisoformat(d[-1][:10])
+    cut = (last - timedelta(days=days)).isoformat()
+    for x, y in zip(reversed(d), reversed(v)):
+        if x[:10] <= cut and y is not None:
+            return y
+    return None
+
+
+def stats(name, mode, unit, d, v):
+    """'VKOSPI 55.83 — 일간 −15.0% (MoM +5.0% / QoQ +25.0% / YoY +27.0%)'"""
+    pairs = [(x, y) for x, y in zip(d, v) if y is not None]
+    if len(pairs) < 2:
+        return ''
+    d, v = [x for x, _ in pairs], [y for _, y in pairs]
+    last, prev = v[-1], v[-2]
+    def ch(old):
+        if old is None:
+            return '–'
+        if mode == 'pct':
+            return '–' if not old else f'{(last / old - 1) * 100:+.1f}%'.replace('-', '−')
+        dec = 0 if unit in ('개', '%p') and float(last).is_integer() else (2 if abs(last) < 10 else 1)
+        return f'{last - old:+.{dec}f}{unit}'.replace('-', '−')
+    lv = f'{last:,.0f}' if abs(last) >= 1000 else f'{last:.2f}'.rstrip('0').rstrip('.') if unit != '개' else f'{last:.0f}'
+    lv += LEVEL_UNIT.get(name, '')
+    return f"{name} {lv.replace('-', '−')} — 일간 {ch(prev)} (MoM {ch(_at(d, v, 30))} / QoQ {ch(_at(d, v, 91))} / YoY {ch(_at(d, v, 365))})"
+
+
 def shoot(shots=SHOTS, width=760):
-    """[(png 경로, 한 줄 설명)]"""
+    """[(png 경로, 설명)] — 설명 = 숫자 변화 한 줄 + 해석 한 줄"""
     _ensure_playwright()
     from playwright.sync_api import sync_playwright
     shutil.rmtree(OUT, ignore_errors=True)
@@ -79,10 +113,10 @@ def shoot(shots=SHOTS, width=760):
             pg = b.new_page(viewport={'width': width, 'height': 1000}, device_scale_factor=2, color_scheme='dark')
             pg.add_init_script("try { localStorage.setItem('theme', 'dark'); } catch (e) {}")   # 2026-11-24 사용자: 다크 모드로
             cur = None
-            for i, (page, sec, name) in enumerate(shots, 1):
+            for i, (page, sec, name, mode, unit, si) in enumerate(shots, 1):
                 try:
                     if page != cur:
-                        pg.goto(f'{base}/{page}.html', wait_until='networkidle', timeout=60000)
+                        pg.goto(f'{base}/{page}.html?zoom={ZOOM}', wait_until='networkidle', timeout=60000)
                         pg.wait_for_timeout(1500)
                         cur = page
                     el = pg.locator(f'#{sec}').first
@@ -92,7 +126,11 @@ def shoot(shots=SHOTS, width=760):
                     f = OUT / f'{i:02d}-{page}-{sec}.png'
                     chart = el.locator('.ch:has(svg)').first      # 그래프 부분만(글 카드·설명 빼고) — 2026-11-24 사용자 요청
                     (chart if chart.count() else el).screenshot(path=str(f), timeout=20000)
-                    out.append((f, caption(text, name)))
+                    ser = (chart if chart.count() else el).evaluate(
+                        f"e => {{ const c = e.matches('.ch') ? e : e.querySelector('.ch'); const s = c && c.__spec && c.__spec.series[{si}]; return s ? {{d: s.d, v: s.v}} : null; }}")
+                    num = stats(name, mode, unit, ser['d'], ser['v']) if ser else ''
+                    read = caption(text, '').lstrip(' —') if text else ''
+                    out.append((f, '\n'.join(x for x in (num or name, read) if x)))
                 except Exception as e:
                     print(f'snap: {page}#{sec} 못 찍음 — {type(e).__name__}: {str(e)[:120]}')
             b.close()
@@ -103,4 +141,4 @@ def shoot(shots=SHOTS, width=760):
 
 if __name__ == '__main__':
     for f, c in shoot():
-        print(f.name, '|', c)
+        print(f.name, '|', c.replace(chr(10), ' / '))

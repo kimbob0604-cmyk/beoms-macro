@@ -13,8 +13,11 @@ const MChart = (() => {
 
   function line(el, spec) {
     const W = 760, H = spec.height || 260, L = 46, R = spec.series.some(s => s.axis === 'r') ? 50 : 14, T = 10, B = 22;
+    el.__spec = spec;                                    // 알림 캡처(snap.py)가 원 계열로 변화율을 계산한다
     const dates = [...new Set(spec.series.flatMap(s => s.d))].sort();
     if (spec.from) { while (dates.length && dates[0] < spec.from) dates.shift(); }
+    const zoom = +(typeof location !== 'undefined' && new URLSearchParams(location.search).get('zoom'));   // ?zoom=180 → 최근 180일만
+    if (zoom > 0 && dates.length) { const cut = new Date(Date.parse(dates[dates.length - 1]) - zoom * 864e5).toISOString().slice(0, 10); while (dates.length && dates[0] < cut) dates.shift(); }
     const n = dates.length;
     if (!n) { el.innerHTML = '<p class="muted small">자료 없음</p>'; return; }
     const ix = new Map(dates.map((d, i) => [d, i]));
