@@ -22,6 +22,10 @@ on:
         description: 시험 — 수집·빌드만 하고 DB·사이트는 올리지 않는다 (출처별로 되는지 확인)
         type: boolean
         default: false
+      preview:
+        description: 텔레그램 정기 보고를 [미리보기]로 지금 한 번 보낸다(차트 캡처 포함)
+        type: boolean
+        default: false
 
 permissions:
   contents: write        # 릴리스 첨부(DB 사본)
@@ -71,6 +75,9 @@ jobs:
       - name: 수집·빌드
         if: steps.fresh.outputs.skip != 'true'
         run: python3 run_daily.py --report || true
+      - name: 알림 미리보기
+        if: inputs.preview
+        run: python3 alert.py --preview
       - name: DB 올리기
         if: steps.fresh.outputs.skip != 'true' && !inputs.dry
         run: python3 sync.py push

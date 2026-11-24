@@ -4,19 +4,21 @@
   python3 alert.py --preview  # 지금 내용을 [미리보기] 로 한 번 보낸다('보냄' 표시는 하지 않는다 — 양식 확인용)
   python3 alert.py            # run_daily.py 가 빌드 뒤에 부른다
 
-보내는 것 (같은 내용은 한 번만 — macro.db 의 alerted 표에 적어 둔다)
-  · 국면 칸이 바뀜            · '오늘 바뀐 것'의 기준선 통과(바닥 신호 개수, 공탐지수, 위험선호 지수, CTA 전환, 글로벌 폭, 스트레스 지수, 베이시스 …)
-  · 수집 실패(하루 한 번)
-평소의 2배 넘게 움직인 지표(크로스에셋)는 매일 여러 개라 보내지 않는다.
-
-양식: 머리(시각) → 국면 한 줄 → 바뀐 것을 용도(비중·타이밍·흐름·섹터)별로, 문장의 ' — ' 뒤(뜻)는 한 줄 내려 기울여 → 지금 숫자 4줄 → 사이트 링크.
+보내는 것 (2026-11-24 사용자 요청으로 바꿈)
+  · 정기 보고: 매일 08·16·20시(한국시간, 그 시각부터 90분 안의 첫 실행) — 머리 글(국면·바닥/과열 신호·지금 숫자·점검) 뒤에
+    주요 차트 10장(snap.py 가 화면을 찍음)을 앨범으로, 장마다 한 줄 설명.
+  · 수시 알림: 바닥 신호나 과열 신호가 '새로 켜졌을 때'만(켜진 조건 이름으로 비교). 바닥 신호 개수·ADR 차트 2장을 붙인다.
+  · 그 밖의 '오늘 바뀐 것'·수집 실패는 따로 보내지 않고 정기 보고에만 짧게 싣는다.
+같은 보고·신호는 한 번만 — macro.db 의 alerted 표(보고 열쇠)와 kv 표(sig_on: 지난번 켜진 신호)에 적어 둔다.
 """
 import html
 import json
 import sys
+from pathlib import Path
 from datetime import date, datetime
 
 import requests
+from zoneinfo import ZoneInfo
 
 import config
 import store
@@ -34,89 +36,173 @@ def num(v, d=0, sign=False):
     return s.replace('-', '−')
 
 
-def collect(c):
-    """[(중복 확인용 열쇠, 용도, 문장)]"""
-    J = lambda n: json.loads((config.DATA / n).read_text(encoding='utf-8'))
-    T, S = J('today.json'), J('status.json')
-    out = []
+KST = ZoneInfo('Asia/Seoul')
+SLOTS = (8, 16, 20)          # 정기 보고 시각(한국시간)
+WINDOW = 90                  # 그 시각부터 몇 분 안의 실행이 보낼지 (예약이 늦게 돌 때 대비)
+FAIL_WHY = (('ConnectionError', '출처 사이트 접속 안 됨'), ('Timeout', '출처 응답 없음'), ('HTTPError', '출처 오류'), ('403', '출처가 막음'), ('429', '요청 너무 많음'))
+
+
+def J(n):
+    return json.loads((config.DATA / n).read_text(encoding='utf-8'))
+
+
+def kv(c, k, v=None):
+    c.execute('CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)')
+    if v is None:
+        r = c.execute('SELECT v FROM kv WHERE k=?', (k,)).fetchone()
+        return json.loads(r[0]) if r else None
+    c.execute('INSERT OR REPLACE INTO kv VALUES (?,?)', (k, json.dumps(v, ensure_ascii=False)))
+
+
+def head(now, tag=''):
+    return f"<b>Beom's Macro</b>{f' {tag}' if tag else ''} · {now.month}/{now.day}({DAYS[now.weekday()]}) {now:%H:%M}"
+
+
+def regime_line(T):
     R = T['regime']
-    last_cell = c.execute("SELECT key FROM alerted WHERE key LIKE 'regime:%' ORDER BY rowid DESC LIMIT 1").fetchone()
-    if not last_cell:
-        c.execute('INSERT OR IGNORE INTO alerted VALUES (?,?)', (f"regime:{R['cell']}:{date.today()}", 'init'))       # 처음에는 지금 칸을 기억만 한다
-    elif last_cell[0].split(':')[1] != R['cell']:
-        out.append((f"regime:{R['cell']}:{date.today()}", '비중', f"국면이 바뀌었다: {last_cell[0].split(':')[1]} → {R['cell']} — 비중 탭의 내 비중표를 다시 볼 때"))
-    for x in T['changes']:
-        out.append((f"chg:{x['date']}:{x['text'][:40]}", x['use'] if x['use'] in ORDER else '흐름', x['text']))
-    bad = sorted(k for k, j in S['jobs'].items() if not j['ok'])
-    if bad:
-        out.append((f"fail:{date.today()}:{','.join(bad)}", '점검', f"수집 실패: {', '.join(bad)} — 해당 지표는 '늦음'으로 표시된다"))
-    return out, T
-
-
-def compose(new, T, tag=''):
-    now = datetime.now()
-    R, ib, fg = T['regime'], T.get('ib') or {}, T.get('fg') or {}
-    lines = [f"<b>Beom's Macro</b>{f' {tag}' if tag else ''} · {now:%m/%d}({DAYS[now.weekday()]}) {now:%H:%M}", '']
     same = R['cell'] == R.get('cell_prev')
-    lines.append(f"<b>국면 {esc(R['cell'])}</b>  위험선호 {num(R['risk'])} · 유동성·크레딧 {num(R['liq'])}"
-                 + (f"  <i>(한 달 전에도 {esc(R['cell_prev'])})</i>" if same else f"  <i>(한 달 전 {esc(R.get('cell_prev') or '–')})</i>"))
-    for use in ORDER:
-        items = [t for _, u, t in new if u == use]
-        if not items:
-            continue
-        lines += ['', f'<b>{use}</b>']
-        for t in items:
-            head, _, mean = t.partition(' — ')
-            lines.append(f'• {esc(head)}')
-            if mean:
-                lines.append(f'   <i>{esc(mean)}</i>')
-    B, H = T['bottom'], T['hot']
-    snap = [f"바닥 신호 {B['count']}/{B['max']} · 과열 신호 {H['count']}/{H['max']}"]
+    return (f"<b>국면 {esc(R['cell'])}</b>  위험선호 {num(R['risk'])} · 유동성·크레딧 {num(R['liq'])}"
+            + (f"  <i>(한 달 전에도 {esc(R['cell_prev'])})</i>" if same else f"  <i>(한 달 전 {esc(R.get('cell_prev') or '–')})</i>"))
+
+
+def snapshot(T):
+    ib, fg, B, H = T.get('ib') or {}, T.get('fg') or {}, T['bottom'], T['hot']
+    out = [f"바닥 신호 {B['count']}/{B['max']} · 과열 신호 {H['count']}/{H['max']}"]
     if fg:
-        snap.append(f"공탐지수 한국 {num((fg.get('kr') or {}).get('last'))} · CNN {num((fg.get('cnn') or {}).get('last'))}"
-                    + (f" · AI 크레딧 스트레스 {num(fg['stress']['last'])}" if fg.get('stress') else ''))
+        out.append(f"공탐지수 한국 {num((fg.get('kr') or {}).get('last'))} · CNN {num((fg.get('cnn') or {}).get('last'))}"
+                   + (f" · AI 크레딧 스트레스 {num(fg['stress']['last'])}" if fg.get('stress') else ''))
     if ib:
-        snap.append(f"위험선호 지수 {num(ib['rai']['last'], 2, True)} · CTA 주식 {num(ib['cta']['last'], 0, True)}% · 200일선 위 나라 {num(ib['gb']['last'])}%")
-    lines += ['', '<b>지금 숫자</b>', *[esc(x) for x in snap], '', f'<a href="{SITE}">사이트에서 보기</a>']
-    return '\n'.join(lines)
+        out.append(f"위험선호 지수 {num(ib['rai']['last'], 2, True)} · CTA 주식 {num(ib['cta']['last'], 0, True)}% · 200일선 위 나라 {num(ib['gb']['last'])}%")
+    return [esc(x) for x in out]
 
 
-def send(text):
-    r = requests.post(f"https://api.telegram.org/bot{config.key('MACRO_TG_TOKEN')}/sendMessage",
-                      json={'chat_id': config.key('MACRO_TG_CHAT'), 'text': text, 'parse_mode': 'HTML', 'disable_web_page_preview': True}, timeout=20)
-    return r
+def fail_lines(S):
+    out = []
+    for k, j in sorted(S['jobs'].items()):
+        if j['ok']:
+            continue
+        why = next((w for key, w in FAIL_WHY if key in (j.get('msg') or '')), '수집 실패')
+        out.append(f"• {esc(k)}: {why} → 그 지표만 '늦음'")
+    return out
+
+
+def report_text(T, S, shots, now, tag=''):
+    B, H = T['bottom'], T['hot']
+    L = [head(now, tag), '', regime_line(T), '', '<b>지금 숫자</b>', *snapshot(T)]
+    if B['on']:
+        L.append(f"<i>켜진 바닥 신호: {esc(', '.join(B['on']))}</i>")
+    if H['on']:
+        L.append(f"<i>켜진 과열 신호: {esc(', '.join(H['on']))}</i>")
+    if shots:
+        L += ['', '<b>차트</b> (아래 앨범)']
+        L += [f"{i}. {esc(c)}" for i, (_, c) in enumerate(shots, 1)]
+    bad = fail_lines(S)
+    if bad:
+        L += ['', '<b>점검</b>', *bad]
+    L += ['', f'<a href="{SITE}">사이트에서 보기</a>']
+    text = '\n'.join(L)
+    return text if len(text) <= 4000 else text[:3990] + '…'
+
+
+def signal_text(T, new_b, new_h, now, tag=''):
+    B, H = T['bottom'], T['hot']
+    L = [head(now, tag), '']
+    if new_b:
+        L += [f"<b>바닥 신호 새로 켜짐</b> → {B['count']}/{B['max']}", *[f'• {esc(x)}' for x in new_b], '<i>과매도 쪽 조건이 하나 더 켜졌다 — 타이밍 탭에서 신호 뒤 수익률 확인</i>', '']
+    if new_h:
+        L += [f"<b>과열 신호 새로 켜짐</b> → {H['count']}/{H['max']}", *[f'• {esc(x)}' for x in new_h], '<i>과열 쪽 조건이 하나 더 켜졌다 — 비중 줄일 자리인지 확인</i>', '']
+    L += [regime_line(T), '', *snapshot(T), '', f'<a href="{SITE}timing.html">타이밍 탭에서 보기</a>']
+    return '\n'.join(L)
+
+
+def tg(method, **kw):
+    return requests.post(f"https://api.telegram.org/bot{config.key('MACRO_TG_TOKEN')}/{method}", timeout=60, **kw)
+
+
+def send(text, shots=()):
+    chat = config.key('MACRO_TG_CHAT')
+    r = tg('sendMessage', json={'chat_id': chat, 'text': text, 'parse_mode': 'HTML', 'disable_web_page_preview': True})
+    if r.status_code != 200 or not shots:
+        return r
+    media, files = [], {}
+    for i, (f, cap) in enumerate(list(shots)[:10]):
+        files[f'p{i}'] = (Path(f).name, Path(f).read_bytes(), 'image/png')
+        media.append({'type': 'photo', 'media': f'attach://p{i}', 'caption': f'{i + 1}. {cap}'[:1000]})
+    if len(media) == 1:
+        return tg('sendPhoto', data={'chat_id': chat, 'caption': media[0]['caption']}, files={'photo': files['p0']})
+    return tg('sendMediaGroup', data={'chat_id': chat, 'media': json.dumps(media, ensure_ascii=False)}, files=files)
+
+
+def due_slot(c, now):
+    for h in SLOTS:
+        start = now.replace(hour=h, minute=0, second=0, microsecond=0)
+        if 0 <= (now - start).total_seconds() / 60 < WINDOW:
+            key = f'report:{now:%Y-%m-%d}:{h:02d}'
+            if not c.execute('SELECT 1 FROM alerted WHERE key=?', (key,)).fetchone():
+                return key
+    return None
 
 
 def main():
     dry, preview = '--dry' in sys.argv, '--preview' in sys.argv
+    now = datetime.now(KST)
     c = store.connect()
     c.execute('CREATE TABLE IF NOT EXISTS alerted (key TEXT PRIMARY KEY, at TEXT)')
-    items, T = collect(c)
-    new = items if preview else [x for x in items if not c.execute('SELECT 1 FROM alerted WHERE key=?', (x[0],)).fetchone()]
-    if not new:
-        c.commit()
-        print('alert: 새로 알릴 것 없음')
-        return 0
-    text = compose(new, T, '[미리보기]' if preview else '')
+    T, S = J('today.json'), J('status.json')
     on = (preview or config.key('MACRO_TG_ENABLED') == '1') and config.key('MACRO_TG_TOKEN') and config.key('MACRO_TG_CHAT')
-    if dry or not on:
-        print(f'alert: {"시험" if dry else "꺼져 있음(MACRO_TG_ENABLED)"} — 보낼 내용 {len(new)}건\n{text}')
-        c.rollback() if dry else c.commit()
+    tag = '[미리보기]' if preview else ''
+
+    # 1) 수시: 새로 켜진 신호
+    prev = kv(c, 'sig_on')
+    cur = {'bottom': T['bottom']['on'], 'hot': T['hot']['on']}
+    new_b = [x for x in cur['bottom'] if prev and x not in prev.get('bottom', [])]
+    new_h = [x for x in cur['hot'] if prev and x not in prev.get('hot', [])]
+    jobs = []
+    if new_b or new_h:
+        jobs.append(('signal', signal_text(T, new_b, new_h, now, tag), [('timing', 'c-count', '바닥 신호 개수'), ('timing', 'c-adr', 'ADR (20일)')]))
+    # 2) 정기 보고
+    slot = None if preview else due_slot(c, now)
+    if slot or preview:
+        jobs.append(('report', None, None))
+    if not jobs:
+        if not dry:
+            kv(c, 'sig_on', cur)
+            c.commit()
+        print('alert: 보낼 것 없음' + ('' if prev else ' (신호 상태를 처음 기억함)'))
         return 0
-    r = send(text)
-    if r.status_code != 200:
-        store.log(c, 'alert', False, f'{r.status_code} {r.text[:120]}')
-        print('alert: 보내기 실패', r.status_code, r.text[:200])
-        return 1
-    if preview:
-        c.rollback()
-        print(f'alert: 미리보기 보냄 ({len(new)}건)\n{text}')
-        return 0
-    now = datetime.now().isoformat(timespec='seconds')
-    c.executemany('INSERT OR IGNORE INTO alerted VALUES (?,?)', [(k, now) for k, _, _ in new])
+
+    import snap
+    sent = 0
+    for kind, text, want in jobs:
+        try:
+            if kind == 'report':
+                shots = snap.shoot()
+                text = report_text(T, S, shots, now, tag)
+            else:
+                shots = snap.shoot([(p, s, n) for p, s, n in want])
+                shots = [(f, cap) for f, cap in shots]
+        except Exception as e:                       # 캡처가 안 되면 글만 보낸다
+            print(f'alert: 캡처 실패 — {type(e).__name__}: {str(e)[:160]}')
+            shots = []
+            if kind == 'report':
+                text = report_text(T, S, [], now, tag)
+        if dry or not on:
+            print(f'alert: {"시험" if dry else "꺼져 있음"} — {kind}, 차트 {len(shots)}장\n{text}')
+            continue
+        r = send(text, shots)
+        if r.status_code != 200:
+            store.log(c, 'alert', False, f'{kind} {r.status_code} {r.text[:120]}')
+            print('alert: 보내기 실패', kind, r.status_code, r.text[:200])
+            continue
+        sent += 1
+        if kind == 'report' and slot:
+            c.execute('INSERT OR IGNORE INTO alerted VALUES (?,?)', (slot, now.isoformat(timespec='seconds')))
+    if not dry and not preview:
+        kv(c, 'sig_on', cur)
     c.commit()
-    store.log(c, 'alert', True, f'{len(new)}건')
-    print(f'alert: {len(new)}건 보냄')
+    if sent:
+        store.log(c, 'alert', True, f'{sent}건')
+    print(f'alert: {sent}건 보냄')
     return 0
 
 

@@ -7,3 +7,4 @@ public/data/
 .cache/
 _site/
 db/sync.json
+_snap/

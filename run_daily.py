@@ -34,7 +34,7 @@ def main():
                     store.log(store.connect(), name, False, f'종료 코드 {r.returncode}')
             print(f'{name}: {"정상" if not r.returncode else f"실패({r.returncode})"}')
         if jobs:      # 알림(꺼져 있으면 아무것도 보내지 않는다)
-            subprocess.run([sys.executable, 'alert.py'], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT, timeout=120)
+            subprocess.run([sys.executable, 'alert.py'], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT, timeout=600)   # 정기 보고는 차트 캡처로 1~2분
     if '--report' in sys.argv:      # 출처별로 됐는지·막혔는지 (클라우드 시험용)
         import sqlite3
         c = sqlite3.connect(ROOT / 'db' / 'macro.db')
