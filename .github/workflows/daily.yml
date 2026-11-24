@@ -87,8 +87,22 @@ jobs:
         with:
           path: _site
           retention-days: 1
+      # 업로드 직후 배포가 '아티팩트 0개'로 실패할 때가 있다(2026-11-24 09:05·04:29, GitHub 쪽 지연).
+      # 그러면 DB 는 올라갔는데 사이트만 옛날 것으로 남고, 다음 예약은 '100분 안에 올렸음'으로 건너뛴다 → 잠시 뒤 두 번 더 시도.
       - id: deploy
         if: steps.fresh.outputs.skip != 'true' && !inputs.dry
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - if: steps.deploy.outcome == 'failure'
+        run: sleep 30
+      - id: deploy2
+        if: steps.deploy.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - if: steps.deploy2.outcome == 'failure'
+        run: sleep 90
+      - id: deploy3
+        if: steps.deploy2.outcome == 'failure'
         uses: actions/deploy-pages@v4
       - name: 예약 켜 두기
         if: always()
