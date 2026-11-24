@@ -56,6 +56,13 @@ def main():
         print('site_crypt: mu.js 에서 잠금 표시를 찾지 못했다')
         return 1
     mu.write_text(js.replace('const LOCKED = false;', 'const LOCKED = true;'), encoding='utf-8')
+    # 화면의 js·css 주소에 내용 해시를 붙인다(?v=…). Pages 가 10분 캐시해서, 배포 직후 옛 스크립트(옛 날짜 표기)가 남는 것을 막는다
+    import re
+    def ver(m):
+        f = out / m.group(2)
+        return f'{m.group(1)}{m.group(2)}?v={hashlib.sha1(f.read_bytes()).hexdigest()[:8]}"' if f.exists() else m.group(0)
+    for page in out.glob('*.html'):
+        page.write_text(re.sub(r'((?:src|href)=")((?:js|css)/[^"?]+)"', ver, page.read_text(encoding='utf-8')), encoding='utf-8')
     key, salt = key_of(pw)
     n = size = 0
     for p in files:
