@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-JOBS = [('market', ['collect_market.py']), ('vol', ['collect_vol.py']), ('breadth', ['collect_breadth.py']),
+JOBS = [('market', ['collect_market.py']), ('vol', ['collect_vol.py']), ('breadth', ['collect_breadth.py']), ('trend', ['collect_trend.py']),
         ('fred', ['collect_fred.py']), ('kr', ['collect_kr.py']), ('sent', ['collect_sent.py']), ('ib', ['collect_ib.py']), ('deriv', ['collect_deriv.py'])]
 
 

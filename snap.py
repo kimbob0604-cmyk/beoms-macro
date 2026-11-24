@@ -31,6 +31,8 @@ SHOTS = [
     ('flow', 'credit', '한국 신용잔고', 'pct', '', 0),
     ('credit', 'stress', 'AI 크레딧 스트레스', 'diff', 'pt', 0),
     ('weight', 'credit', '하이일드 스프레드', 'pct', '', 0),
+    ('trend', 'tt-kr', '트렌드 템플릿 통과 — 한국', 'diff', '%p', 0),
+    ('trend', 'tt-us', '트렌드 템플릿 통과 — S&P500', 'diff', '%p', 0),
 ]
 
 
@@ -60,7 +62,7 @@ def caption(text: str, name: str) -> str:
     return f'{name} — {first}' if first else name
 
 
-LEVEL_UNIT = {'CTA S&P500 포지션': '%', '하이일드 스프레드': '%p', '한국 신용잔고': '조원', 'ADR (20일)': '%'}
+LEVEL_UNIT = {'트렌드 템플릿 통과 — 한국': '%', '트렌드 템플릿 통과 — S&P500': '%', 'CTA S&P500 포지션': '%', '하이일드 스프레드': '%p', '한국 신용잔고': '조원', 'ADR (20일)': '%'}
 
 
 def _at(d, v, days):
@@ -86,9 +88,11 @@ def stats(name, mode, unit, d, v):
             return '–'
         if mode == 'pct':
             return '–' if not old else f'{(last / old - 1) * 100:+.1f}%'.replace('-', '−')
-        dec = 0 if unit in ('개', '%p') and float(last).is_integer() else (2 if abs(last) < 10 else 1)
+        dec = 1 if name.startswith('트렌드') else 0 if unit in ('개', '%p') and float(last).is_integer() else (2 if abs(last) < 10 else 1)
         return f'{last - old:+.{dec}f}{unit}'.replace('-', '−')
     lv = f'{last:,.0f}' if abs(last) >= 1000 else f'{last:.2f}'.rstrip('0').rstrip('.') if unit != '개' else f'{last:.0f}'
+    if name.startswith('트렌드'):
+        lv = f'{last:.1f}'
     lv += LEVEL_UNIT.get(name, '')
     return f"{name} {lv.replace('-', '−')} — 일간 {ch(prev)} (MoM {ch(_at(d, v, 30))} / QoQ {ch(_at(d, v, 91))} / YoY {ch(_at(d, v, 365))})"
 

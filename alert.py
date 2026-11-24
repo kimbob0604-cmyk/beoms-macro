@@ -87,6 +87,17 @@ def fail_lines(S):
     return out
 
 
+def trend_lines(T):
+    """추세추종 탭 요약 두 줄: IBD식 시장 상태 + 트렌드 템플릿 통과 비율 (2026-11-24 추가)"""
+    tf = T.get('trend') or {}
+    if not tf.get('idx'):
+        return []
+    st = ' · '.join(f"{esc(x['name'])} {esc(x['label'])}" + (f"(분산일 {x['dd']})" if x['label'] != '조정' else f"(랠리 {x['rday']}일째)" if x['rday'] else '') for x in tf['idx'])
+    tt = tf.get('tt') or {}
+    t2 = ' · '.join(f"{'한국' if m == 'kr' else '미국'} {v['tt']}%" for m, v in tt.items() if v.get('tt') is not None)
+    return ['', '<b>추세추종</b>', f'• 시장 상태(IBD식): {st}'] + ([f'• 트렌드 템플릿 통과 비율: {t2}'] if t2 else [])
+
+
 def report_text(T, S, shots, now, tag='', link=True):
     B, H = T['bottom'], T['hot']
     L = [head(now, tag), '', regime_line(T), '', '<b>지금 숫자</b>', *snapshot(T)]
@@ -94,6 +105,7 @@ def report_text(T, S, shots, now, tag='', link=True):
         L.append(f"<i>켜진 바닥 신호: {esc(', '.join(B['on']))}</i>")
     if H['on']:
         L.append(f"<i>켜진 과열 신호: {esc(', '.join(H['on']))}</i>")
+    L += trend_lines(T)
     if shots:
         L += ['', f'<i>아래 차트 {len(shots)}장 — 최근 6개월, 장마다 일간·MoM·QoQ·YoY 변화</i>']
     bad = fail_lines(S)

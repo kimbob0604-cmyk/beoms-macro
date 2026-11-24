@@ -13,6 +13,7 @@ import pandas as pd
 
 import build2
 import build3
+import build4
 import config
 import store
 from glossary import G
@@ -242,8 +243,10 @@ def main():
     ch += build2.build(S, M, dump, now, R)          # 비중·수급·공탐지수·AI 크레딧 (파생 계열을 S·M 에 더한다)
     ch3, ib = build3.build(S, M, dump, now, c)      # IB 지표판·CTA 모델·파생·평단
     ch += ch3
+    ch4, tf = build4.build(S, M, dump, now, c)      # 추세추종 (분산일·팔로스루·트렌드 템플릿·단계)
+    ch += ch4
     fg = lambda k: None if k not in S else {'last': r(S[k].dropna().iloc[-1], 1), 'date': S[k].dropna().index[-1]}
-    dump('today.json', {'built': now, 'regime': R, 'changes': ch, 'movers': movers, 'us2kr': us_to_kr(S), 'fg': {'cnn': fg('sent:cnn'), 'kr': fg('sent:krfg'), 'stress': fg('credit:ai_stress')}, 'ib': ib,
+    dump('today.json', {'built': now, 'regime': R, 'changes': ch, 'movers': movers, 'us2kr': us_to_kr(S), 'fg': {'cnn': fg('sent:cnn'), 'kr': fg('sent:krfg'), 'stress': fg('credit:ai_stress')}, 'ib': ib, 'trend': tf,
                         'bottom': {'count': B['bottom']['count'], 'max': B['bottom']['max'], 'on': [x['name'] for x in B['bottom']['conds'] if x['on']]},
                         'hot': {'count': B['hot']['count'], 'max': B['hot']['max'], 'on': [x['name'] for x in B['hot']['conds'] if x['on']]}})
 

@@ -1,6 +1,6 @@
 // Beom's Macro 공통: 머리(탭)·테마·숫자 포맷·용도 배지·작은 선 그림
 const MU = (() => {
-  const TABS = [['index.html', '오늘', 'today'], ['timing.html', '타이밍', 'timing'], ['weight.html', '비중', 'weight'], ['sector.html', '섹터', 'sector'], ['flow.html', '수급', 'flow'], ['credit.html', 'AI 크레딧', 'credit'], ['deriv.html', '파생·평단', 'deriv'], ['ib.html', 'IB 지표판', 'ib'], ['pair.html', '페어·상관', 'pair'], ['glossary.html', '지표 사전', 'glossary']];
+  const TABS = [['index.html', '오늘', 'today'], ['timing.html', '타이밍', 'timing'], ['trend.html', '추세추종', 'trend'], ['weight.html', '비중', 'weight'], ['sector.html', '섹터', 'sector'], ['flow.html', '수급', 'flow'], ['credit.html', 'AI 크레딧', 'credit'], ['deriv.html', '파생·평단', 'deriv'], ['ib.html', 'IB 지표판', 'ib'], ['pair.html', '페어·상관', 'pair'], ['glossary.html', '지표 사전', 'glossary']];
   const SOON = [];
   const USE = { '흐름': 'flow', '타이밍': 'timing', '비중': 'weight', '섹터': 'sector' };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>추세추종 · Beom's Macro</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="css/macro.css">
+<script>try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+<main>
+  <div class="page-head"><h1>추세추종 <span class="use flow">흐름</span> <span class="use timing">타이밍</span></h1><p>미너비니·오닐(IBD)·와인스타인이 시장을 읽는 규칙을 가격과 거래량으로 직접 계산한 것 — 예측이 아니라 '지금 추세가 어느 쪽인가'</p></div>
+  <section class="card" id="state"></section>
+  <div class="grid2">
+    <section class="card" id="ix-spx"></section>
+    <section class="card" id="ix-kospi"></section>
+  </div>
+  <div class="grid2">
+    <section class="card" id="ix-ndx"></section>
+    <section class="card" id="ix-kosdaq"></section>
+  </div>
+  <section class="card" id="ev"></section>
+  <div class="grid2">
+    <section class="card" id="tt-kr"></section>
+    <section class="card" id="tt-us"></section>
+  </div>
+  <section class="card" id="tt-ev"></section>
+  <div class="grid2">
+    <section class="card" id="st-kr"></section>
+    <section class="card" id="st-us"></section>
+  </div>
+  <div class="grid2">
+    <section class="card" id="lead-kr"></section>
+    <section class="card" id="lead-us"></section>
+  </div>
+  <section class="card" id="rules"></section>
+  <p class="foot">규칙은 대가들의 책과 공개 설명을 기계적 규칙으로 옮긴 것이다(IBD 는 사람이 판단해 발표하므로 날짜가 다를 수 있다). 미국 종목은 지금의 S&P500 구성 종목이라 과거 비율에는 생존 편향이 있다. 자료: Yahoo Finance(지수·미국 종목) · KRX(한국 종목) · 위키백과(S&P500 목록).</p>
+</main>
+<script src="js/mu.js"></script>
+<script src="js/mchart.js"></script>
+<script src="js/trend.js"></script>
+</body>
+</html>

@@ -4,3 +4,4 @@ requests>=2.31
 yfinance>=1.0
 cryptography>=42
 playwright
+lxml

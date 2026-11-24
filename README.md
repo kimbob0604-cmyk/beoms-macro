@@ -16,6 +16,7 @@ python3 collect_breadth.py [--full]   # 한국 폭 지표(ADR·볼밴·RSI·신�
 python3 collect_fred.py [--full]      # 미국 금리·신용 스프레드·유동성·경기 (FRED). 순유동성·CP 스프레드·SOFR−IORB 는 여기서 계산
 python3 collect_kr.py [--full]        # 한국 금리(ECOS) · 신용잔고·예탁금·반대매매(금융투자협회) · 중국 신용잔고(이스트머니)
 python3 collect_sent.py               # CNN·크립토 공탐지수 · DIX/GEX · CBOE 풋콜 · S&P500 PER(multpl) · CFTC 포지션
+python3 collect_trend.py [--seed]     # 추세추종: 지수 종가·거래량, 트렌드 템플릿·와인스타인 단계 비율(한국 전 종목·S&P500), 통과 종목 (--seed: 맥에서 과거 이력 → seed_trend.json.gz)
 python3 collect_ib.py [--full]        # 국가 ETF 43개(글로벌 폭) · 나스닥÷NYSE 거래량 · 미국 공매도 잔고(FINRA)
 python3 collect_deriv.py [krx|kis|opt] [--full]   # KRX 선물·옵션 일별 · 한국투자증권 대차/공매도/선물 수급 · 미국 옵션 체인. 처음엔 선물 750일·옵션 500일(10분쯤)
 python3 build.py                      # 화면용 JSON (build2.py = 비중·수급·공탐지수·AI 크레딧, build3.py = IB 지표판·CTA 모델·파생·평단)
