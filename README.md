@@ -107,7 +107,7 @@ python3 alert.py --dry                # 텔레그램으로 보낼 내용 미리 
   - 달라지는 점: 클라우드는 그날 전 종목 종가를 다음 날 아침에야 받는다 → 한국 폭 지표가 16:40·21:30 실행에서는 전날 기준이다(맥은 대시보드 DB 덕에 당일).
 - **DB 이어 주기**: 릴리스 `macrodb` 에 `macro.db.xz.enc`(101MB → 35MB) + `meta.json`. 워크플로는 받기 → 수집 → 빌드 → 올리기. 한 번에 하나만 돈다.
 - **암호 배포**: `site_crypt.py` 가 `public/data/**` 를 파일마다 AES-256-GCM 으로 잠가 `_site/data/**.enc` 로 두고 `mu.js` 의 `LOCKED` 를 켠다. 화면은 암호를 물어 브라우저 안에서 풀고 열쇠를 그 기기에 기억한다. salt 는 `lock_salt.txt`(비밀 아님).
-- **워크플로** `.github/workflows/daily.yml`: 08:25·16:40·21:30 에 20분 간격 세 번씩(100분 안에 올렸으면 건너뜀), 수동 실행에 `force`·`dry`(올리지 않고 출처별 결과만).
+- **워크플로** `.github/workflows/daily.yml`: 30분마다(20분 안에 올렸으면 건너뜀, 2026-11-24~). 배포가 '아티팩트 0개'로 실패하면 두 번 더 시도. KIS 토큰은 DB kv 표에 두고 다시 씀, 수동 실행에 `force`·`dry`(올리지 않고 출처별 결과만).
 - **알림**: 2026-11-20 켬 — 봇 `@Beomjun_Macro_bot`, 1:1 대화로 보낸다(클라우드 실행 뒤, 새로 바뀐 것만). 클라우드는 `MACRO_TG_TOKEN` 이 있으면 켠다 — 끄려면 그 비밀값을 지운다(`MACRO_TG_ENABLED` 비밀값은 쓰지 않는다: 값 '1' 이 실행 기록의 숫자 1 을 모두 가려서). 맥에서 직접 보낼 때만 `.env` 에 `MACRO_TG_ENABLED=1`.
 - **비밀값**(직접 등록): `KRX_API_KEY` · `FRED_KEY` · `ECOS_KEY` · `KIS_APP_KEY` · `KIS_APP_SECRET` · `MACRO_PASS` · `MACRO_DB_PASS`. 알림: `MACRO_TG_ENABLED=1` · `MACRO_TG_TOKEN` · `MACRO_TG_CHAT`. 맥에서 `sync.py`·`site_crypt.py` 를 쓰려면 이 폴더 `.env` 에도 두 암호를 적는다.
 - 남은 순서: 비밀값 등록(`gh secret set <이름> -R kimbob0604-cmyk/beoms-macro`) + 이 폴더 `.env` 에 `MACRO_PASS`·`MACRO_DB_PASS` → 맥에서 `sync.py push` → 워크플로 `dry` 로 출처 시험 → 실제 실행·배포 확인 → 맥 예약 작업 끄기 → 알림 봇·방 정해 켜기.

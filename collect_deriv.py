@@ -217,11 +217,27 @@ def kis_token(s):
                 return d['token']
         except (OSError, ValueError):
             continue
+    try:                                                              # 클라우드는 .cache 가 매번 비므로 DB(암호로 잠가 올림)에 둔 토큰을 먼저 쓴다 — 30분마다 돌아도 하루 한 번만 발급
+        with store.connect() as c:
+            c.execute('create table if not exists kv (k text primary key, v text)')
+            row = c.execute("select v from kv where k='kis_token'").fetchone()
+        d = json.loads(row[0]) if row else {}
+        if d.get('token') and time.time() < d.get('expires', 0) - 600:
+            return d['token']
+    except Exception:
+        pass
     r = s.post(f'{KIS}/oauth2/tokenP', json={'grant_type': 'client_credentials', 'appkey': config.key('KIS_APP_KEY'), 'appsecret': config.key('KIS_APP_SECRET')}, timeout=15).json()
     if not r.get('access_token'):
         raise RuntimeError(f"토큰 발급 실패: {r.get('error_description') or r.get('msg1')}")
     files[0].parent.mkdir(exist_ok=True)
-    files[0].write_text(json.dumps({'token': r['access_token'], 'expires': time.time() + int(r.get('expires_in', 86400))}), encoding='utf-8')
+    tok = json.dumps({'token': r['access_token'], 'expires': time.time() + int(r.get('expires_in', 86400))})
+    files[0].write_text(tok, encoding='utf-8')
+    try:
+        with store.connect() as c:
+            c.execute('create table if not exists kv (k text primary key, v text)')
+            c.execute("insert or replace into kv values ('kis_token', ?)", (tok,))
+    except Exception:
+        pass
     return r['access_token']
 
 

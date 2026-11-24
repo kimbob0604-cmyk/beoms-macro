@@ -74,7 +74,9 @@ const MU = (() => {
   const use = s => String(s || '').split(',').filter(Boolean).map(u => `<span class="use ${USE[u] || ''}">${esc(u)}</span>`).join(' ');
   const days = d => Math.round((Date.now() - new Date(d + 'T00:00:00').getTime()) / 864e5);
   // late: 며칠 넘게 지나면 '늦음' (매일 5 · 주간 12 · 월간 100 · 분기 250)
-  const asof = (d, late = 5) => d ? `<span class="asof${days(d) > late ? ' late' : ''}">${esc(d.slice(5))} 기준${days(d) > late ? ' · 늦음' : ''}</span>` : '';
+  // 날짜 표기: 2026-11-23 → 11/23 (사용자 요청 2026-11-24)
+  const md = d => { const m = String(d ?? '').match(/^\d{4}-(\d{2})-(\d{2})/); return m ? `${+m[1]}/${+m[2]}` : String(d ?? ''); };
+  const asof = (d, late = 5) => d ? `<span class="asof${days(d) > late ? ' late' : ''}">${esc(md(d))} 기준${days(d) > late ? ' · 늦음' : ''}</span>` : '';
   const pm = (v, d = 1, u = '%') => v == null ? '–' : `${v > 0 ? '+' : ''}${num(v, d)}${u}`;
   // 0~100 점수 막대. bad='hi' 면 높을수록 경고색
   const gauge = (v, bad) => v == null ? '' : `<span class="gauge${bad === 'hi' && v >= 80 || bad === 'lo' && v <= 20 ? ' warn' : ''}"><i style="width:${Math.max(2, Math.min(100, v))}%"></i></span>`;
@@ -99,5 +101,5 @@ const MU = (() => {
   }
   const pos = p => p == null ? '' : `<span class="pos" title="52주 위치 ${p}%"><i style="left:${p}%"></i></span>`;
   const fail = e => { const m = document.querySelector('main'); m.insertAdjacentHTML('afterbegin', `<div class="alert">데이터를 불러오지 못했다: ${esc(e.message)} — <code>python3 run_daily.py</code> 를 먼저 실행.</div>`); console.error(e); };
-  return { shell, built, get, num, chg, sgn, use, asof, days, spark, pos, esc, fail, pm, gauge, parts, evidence, zbar };
+  return { md, shell, built, get, num, chg, sgn, use, asof, days, spark, pos, esc, fail, pm, gauge, parts, evidence, zbar };
 })();

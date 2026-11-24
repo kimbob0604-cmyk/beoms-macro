@@ -58,7 +58,7 @@
       <div class="big">${num(C.last, 0)}<small> / 100 · ${esc(C.word)}</small></div>${meter(C.last)}${MU.parts(C.parts, 'lo')}
       <div class="read">지금 읽으면 — <b>${num(C.last, 0)} (${esc(C.word)})</b>: ${C.last < 25 ? '<b>극단 공포</b> — 역발상 매수 검토 구간' : C.last < 45 ? '공포 쪽이지만 극단(25 아래)은 아니다' : C.last > 75 ? '<b>극단 탐욕</b> — 신규 매수 자제' : '극단이 아니다'}.
         크립토 공탐지수 <b>${F.crypto.last ?? '–'}</b> (${esc(F.crypto.word || '')}).
-        ${P.pc_equity ? `미국 풋콜 비율(${esc(P.pc_equity.date.slice(5))}): 주식 <b>${num(P.pc_equity.last)}</b> · 전체 ${num(P.pc_total.last)} · 지수 ${num(P.pc_index.last)} — 주식 풋콜이 1.0 을 넘으면 공포.` : ''}</div><div class="ch"></div>
+        ${P.pc_equity ? `미국 풋콜 비율(${esc(MU.md(P.pc_equity.date))}): 주식 <b>${num(P.pc_equity.last)}</b> · 전체 ${num(P.pc_total.last)} · 지수 ${num(P.pc_index.last)} — 주식 풋콜이 1.0 을 넘으면 공포.` : ''}</div><div class="ch"></div>
       <p class="note">CNN 은 공식 자료 주소가 아니라서 끊길 수 있다(끊기면 '늦음' 표시). 풋콜 비율은 CBOE 가 과거 값을 내주지 않아 오늘부터 하루씩 쌓는다(${P.pc_equity ? P.pc_equity.n : 0}일치).</p>` : '<h2>CNN 공탐지수</h2><p class="muted">자료 없음</p>';
     if (C) MChart.line(uEl.querySelector('.ch'), { series: [{ name: 'CNN 공탐지수', d: C.series.d, v: C.series.v }], hlines: [{ y: 25, label: '25' }, { y: 75, label: '75' }], dec: 0, height: 220 });
     const beat = e => ['1개월', '3개월', '6개월', '12개월'].filter(h => e[h].mean != null && e[h].mean > e[h].base).length;

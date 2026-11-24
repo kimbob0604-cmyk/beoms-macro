@@ -8,7 +8,7 @@
   const $ = id => document.getElementById(id);
   const R = D.regime, C = D.credit, L = D.liq, V = D.val;
   const ser = (o, name, x = {}) => ({ name, d: o.d, v: o.v, ...x });
-  const row = (r, o = {}) => `<tr class="click" data-k="${r.k.replace(/:/g, '_')}"><td>${esc(o.name || r.name)}</td><td class="b">${num(r.last, o.dec ?? 2)}${esc(o.unit ?? r.unit)}</td><td>${o.bp ? pm(r.chg == null ? null : r.chg * 100, 0, 'bp') : pm(r.chg, o.cdec ?? 2, o.cunit ?? '')}</td><td>${r.pct ?? '–'}${MU.gauge(r.pct, o.bad)}</td><td class="muted small">${esc(r.date.slice(5))}</td></tr>`;
+  const row = (r, o = {}) => `<tr class="click" data-k="${r.k.replace(/:/g, '_')}"><td>${esc(o.name || r.name)}</td><td class="b">${num(r.last, o.dec ?? 2)}${esc(o.unit ?? r.unit)}</td><td>${o.bp ? pm(r.chg == null ? null : r.chg * 100, 0, 'bp') : pm(r.chg, o.cdec ?? 2, o.cunit ?? '')}</td><td>${r.pct ?? '–'}${MU.gauge(r.pct, o.bad)}</td><td class="muted small">${esc(MU.md(r.date))}</td></tr>`;
   const table = (rows, chgHead = '20일 변화') => `<table class="tbl"><thead><tr><th>지표</th><th>현재</th><th>${chgHead}</th><th>3년 백분위</th><th>기준일</th></tr></thead><tbody>${rows}</tbody></table>`;
 
   // 국면

@@ -64,7 +64,7 @@
       $('vwap').innerHTML = `<h2>VWAP · 누적 VWAP · 주체별 평단 ${use('타이밍,섹터')} ${asof(VW[0].date)}</h2>
         <p class="sub">VWAP = 거래대금 ÷ 거래량 = 그 기간에 산 사람들의 평균 단가. 기준일부터 누적하면 '그날 이후 산 사람의 평단'이 된다. 현재가가 그 위면 그들이 이익, 아래면 손실(본전 매물대).</p>
         <div class="read">지금 읽으면 — 시총 상위 ${VW.length}개 중 <b>${below}개</b>가 연초 이후 누적 VWAP 아래다 = ${below >= VW.length * 0.6 ? '<b>올해 산 사람의 평균이 손실</b>. 반등하면 이 평단이 본전 매물대(저항)가 된다' : below <= VW.length * 0.3 ? '올해 산 사람 대부분이 이익 — 눌려도 받치는 가격대가 아래에 있다' : '종목별로 갈린다'}.
-          <b>${esc(x.name)}</b>: 종가 ${won(x.px)}원 · 연초 누적 VWAP ${won(x.anc.ytd.v)}원(${pm(x.anc.ytd.gap)}) · 52주 고점일(${esc(x.anc.hi.from.slice(5))}) 이후 누적 VWAP ${won(x.anc.hi.v)}원(${pm(x.anc.hi.gap)}) = 고점 이후 산 사람은 평균 ${x.anc.hi.gap < 0 ? '손실' : '이익'}.
+          <b>${esc(x.name)}</b>: 종가 ${won(x.px)}원 · 연초 누적 VWAP ${won(x.anc.ytd.v)}원(${pm(x.anc.ytd.gap)}) · 52주 고점일(${esc(MU.md(x.anc.hi.from))}) 이후 누적 VWAP ${won(x.anc.hi.v)}원(${pm(x.anc.hi.gap)}) = 고점 이후 산 사람은 평균 ${x.anc.hi.gap < 0 ? '손실' : '이익'}.
           ${x.frgn ? `외국인은 60일 동안 ${pm(x.frgn.net / 1e4, 2, '조원')}, 산 날 평단 ${won(x.frgn.buy)}원(현재가 ${pm(x.frgn.buy_gap)}).` : ''}</div>
         <div class="ch narrow"></div>
         <div class="scroll-x" style="max-height:480px;overflow-y:auto"><table class="tbl"><thead><tr><th>종목</th><th>종가</th><th>당일 VWAP 대비</th><th>연초 누적 VWAP 대비</th><th>52주 고점일 누적 대비</th><th>52주 저점일 누적 대비</th><th>60일 누적 대비</th><th>외국인 60일</th><th>산 날 평단 대비</th><th>기관 60일</th><th>산 날 평단 대비</th><th>개인 60일</th><th>산 날 평단 대비</th></tr></thead><tbody>
@@ -106,7 +106,7 @@
     <table class="tbl"><thead><tr><th>종목</th><th>풋콜 (거래량)</th><th>풋콜 (미결제)</th><th>내재변동성</th><th>전일</th><th>쌓인 날</th></tr></thead><tbody>
     ${U.rows.map(x => `<tr><td>${esc(x.name)} <span class="muted small">${x.tk}</span></td><td class="b ${x.pc_vol >= 1.5 ? 'down' : ''}">${num(x.pc_vol)}</td><td>${num(x.pc_oi)}</td><td class="b">${num(x.iv, 1)}%</td><td class="muted">${x.iv_prev == null ? '–' : num(x.iv_prev, 1) + '%'}</td><td class="muted">${x.n}일</td></tr>`).join('')}</tbody></table>
     <div class="read">지금 읽으면 — ${(() => { const hi = U.rows.filter(x => x.pc_vol >= 1.5), ivs = U.rows.slice().sort((a, b) => b.iv - a.iv); return `풋 거래가 콜의 1.5배를 넘는 것: ${hi.length ? hi.map(x => `${esc(x.name)} ${num(x.pc_vol)}`).join(', ') + ' — 지수·섹터 ETF 는 헤지 수요라 원래 높다' : '없음'}. 내재변동성이 가장 높은 것: ${ivs.slice(0, 3).map(x => `${esc(x.name)} ${num(x.iv, 0)}%`).join(', ')}.`; })()}
-      ${cb.pc_equity ? `미국 전체(CBOE ${esc(cb.pc_equity.date.slice(5))}): 주식 풋콜 <b>${num(cb.pc_equity.last)}</b> · 전체 ${num(cb.pc_total.last)}.` : ''}</div>
+      ${cb.pc_equity ? `미국 전체(CBOE ${esc(MU.md(cb.pc_equity.date))}): 주식 풋콜 <b>${num(cb.pc_equity.last)}</b> · 전체 ${num(cb.pc_total.last)}.` : ''}</div>
     <p class="note">야후 옵션 체인은 과거 값을 주지 않아 오늘부터 하루씩 쌓는다. 며칠 쌓이면 '평소 대비'를 붙인다. 지금은 종목끼리 비교하는 용도.</p>`;
   const SI = D.si || [];
   if (SI.length) {

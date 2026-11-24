@@ -28,7 +28,7 @@
   const reg = [...D.regions].sort((a, b) => (b.m1 ?? -99) - (a.m1 ?? -99));
   document.getElementById('regions').innerHTML = `<h2>지역·지수 수익률 ${use('섹터')} ${use('흐름')}</h2><p class="sub">1개월 수익률 순. 나스닥·대만 강세 = AI·반도체, 상하이·항셍 강세 = 중국 소비·소재, 러셀 강세 = 위험선호 확산.</p>
     <div class="scroll-x"><table class="tbl"><thead><tr><th>지수</th><th>1주</th><th>1개월</th><th>3개월</th><th>6개월</th><th>기준일</th></tr></thead>
-    <tbody>${reg.map(r => `<tr><td>${esc(r.name)}</td><td>${chg(r.w1, false, 1)}</td><td class="b">${chg(r.m1, false, 1)}</td><td>${chg(r.m3, false, 1)}</td><td>${chg(r.m6, false, 1)}</td><td class="muted small">${esc(r.date.slice(5))}</td></tr>`).join('')}</tbody></table></div>`;
+    <tbody>${reg.map(r => `<tr><td>${esc(r.name)}</td><td>${chg(r.w1, false, 1)}</td><td class="b">${chg(r.m1, false, 1)}</td><td>${chg(r.m3, false, 1)}</td><td>${chg(r.m6, false, 1)}</td><td class="muted small">${esc(MU.md(r.date))}</td></tr>`).join('')}</tbody></table></div>`;
 
   // 한국 업종별 과매도 지도
   let sortKey = 'adr', asc = true;

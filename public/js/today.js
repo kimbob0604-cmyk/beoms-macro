@@ -36,8 +36,8 @@
     <p class="note"><a href="timing.html" style="text-decoration:underline">타이밍 탭에서 조건별 값과 신호 뒤 수익률 보기 →</a></p>`;
 
   // 오늘 바뀐 것
-  const mv = T.movers.map(m => `<li>${use('흐름')}<span><b>${esc(m.name)}</b> ${chg(m.d1, m.diff)} — 평소의 ${num(Math.abs(m.z), 1)}배 움직임 <span class="muted small">(${esc(m.date.slice(5))})</span></span></li>`).join('');
-  const ch = T.changes.map(c => `<li>${use(c.use)}<span>${esc(c.text)} <span class="muted small">(${esc(c.date.slice(5))})</span></span></li>`).join('');
+  const mv = T.movers.map(m => `<li>${use('흐름')}<span><b>${esc(m.name)}</b> ${chg(m.d1, m.diff)} — 평소의 ${num(Math.abs(m.z), 1)}배 움직임 <span class="muted small">(${esc(MU.md(m.date))})</span></span></li>`).join('');
+  const ch = T.changes.map(c => `<li>${use(c.use)}<span>${esc(c.text)} <span class="muted small">(${esc(MU.md(c.date))})</span></span></li>`).join('');
   document.getElementById('changes').innerHTML = `<h2>오늘 바뀐 것</h2><p class="sub">기준선을 넘은 지표와, 하루 변화가 최근 1년 평소(표준편차)의 2배를 넘은 지표.</p>
     <ul class="chg-list">${ch + mv || '<li class="muted">기준선을 넘거나 크게 움직인 지표가 없다.</li>'}</ul>`;
 
@@ -49,7 +49,7 @@
     <p class="sub">최근 60일 동안 KOSPI가 직전 미국 장을 얼마나 따라갔나.</p>
     <table class="tbl"><thead><tr><th>미국 (직전 장)</th><th>등락</th><th>민감도</th><th>상관</th><th>민감도 × 등락</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="read">지금 읽으면 — 나스닥과의 상관 <b>${num(c)}</b>: ${c >= 0.5 ? '한국장이 미국을 강하게 따라가는 구간(매크로가 끄는 장)' : c >= 0.3 ? '미국 영향이 보통인 구간' : '미국과 따로 움직이는 구간 — 국내 요인·업종 장세에 무게'}.
-      ${k.after_us ? `KOSPI ${esc(k.date.slice(5))} 실제 등락 ${chg(k.chg)}.` : `KOSPI 최근 종가는 ${esc(k.date.slice(5))} (${chg(k.chg)}) — 미국 장 이전.`}</div>
+      ${k.after_us ? `KOSPI ${esc(MU.md(k.date))} 실제 등락 ${chg(k.chg)}.` : `KOSPI 최근 종가는 ${esc(MU.md(k.date))} (${chg(k.chg)}) — 미국 장 이전.`}</div>
     <p class="note">'민감도 × 등락'은 과거 60일의 평균 관계를 곱한 값일 뿐 예측이 아니다.</p>`;
 
   // 크로스에셋 표
@@ -58,7 +58,7 @@
     const rs = M.rows.filter(r => r.grp === g);
     if (!rs.length) continue;
     body += `<tr class="grp"><td colspan="10">${esc(g)}</td></tr>` + rs.map(r => `<tr class="click" data-k="${r.k.replace(':', '_')}"><td>${esc(r.name)}</td><td class="b">${num(r.last, r.dec)}</td><td>${chg(r.d1, r.diff)}</td><td>${chg(r.w1, r.diff)}</td><td>${chg(r.m1, r.diff)}</td><td>${chg(r.ytd, r.diff)}</td>
-      <td class="${Math.abs(r.z ?? 0) >= 2 ? 'zbig ' + MU.sgn(r.z) : 'muted'}">${r.z == null ? '–' : (r.z > 0 ? '+' : '') + num(r.z, 1)}</td><td>${MU.pos(r.pos)}</td><td>${MU.spark(r.spark)}</td><td class="muted small">${esc(r.date.slice(5))}</td></tr>`).join('');
+      <td class="${Math.abs(r.z ?? 0) >= 2 ? 'zbig ' + MU.sgn(r.z) : 'muted'}">${r.z == null ? '–' : (r.z > 0 ? '+' : '') + num(r.z, 1)}</td><td>${MU.pos(r.pos)}</td><td>${MU.spark(r.spark)}</td><td class="muted small">${esc(MU.md(r.date))}</td></tr>`).join('');
   }
   document.getElementById('monitor').innerHTML = `<h2>크로스에셋 모니터 ${use('흐름')}</h2>
     <p class="sub">금리·변동성은 차이(포인트), 나머지는 %. z = 오늘 변화 ÷ 최근 1년 평소 변화. 줄을 누르면 페어 화면에서 KOSPI와 겹쳐 본다.</p>
