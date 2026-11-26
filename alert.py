@@ -67,14 +67,14 @@ def regime_line(T):
 
 
 def snapshot(T):
-    ib, fg, B, H = T.get('ib') or {}, T.get('fg') or {}, T['bottom'], T['hot']
-    out = [f"바닥 신호 {B['count']}/{B['max']} · 과열 신호 {H['count']}/{H['max']}"]
-    if fg:
-        out.append(f"공탐지수 한국 {num((fg.get('kr') or {}).get('last'))} · CNN {num((fg.get('cnn') or {}).get('last'))}"
-                   + (f" · AI 크레딧 스트레스 {num(fg['stress']['last'])}" if fg.get('stress') else ''))
-    if ib:
-        out.append(f"위험선호 지수 {num(ib['rai']['last'], 2, True)} · CTA 주식 {num(ib['cta']['last'], 0, True)}% · 200일선 위 나라 {num(ib['gb']['last'])}%")
-    return [esc(x) for x in out]
+    """수시 알림의 '지금 숫자' — 직전 값 대비 변화를 붙인다"""
+    B, H = T['bottom'], T['hot']
+    out = [f"바닥 신호 {B['count']}/{B['max']} · 과열 신호 {H['count']}/{H['max']}",
+           ' · '.join(x for x in (f"공탐지수 한국 {move('sent:krfg')}" if series('sent:krfg') else '', f"CNN {move('sent:cnn')}" if series('sent:cnn') else '',
+                                  f"AI 크레딧 스트레스 {move('credit:ai_stress')}" if series('credit:ai_stress') else '') if x),
+           ' · '.join(x for x in (f"위험선호 지수 {move('ib:rai', 2)}" if series('ib:rai') else '', f"CTA 주식 {move('cta:eq', 0, '%')}" if series('cta:eq') else '',
+                                  f"200일선 위 나라 {move('ib:gb_a200', 0, '%')}" if series('ib:gb_a200') else '') if x)]
+    return [esc(x) for x in out if x]
 
 
 def fail_lines(S):
@@ -149,31 +149,107 @@ def market_lines():
     return [esc(x) for x in L]
 
 
+_SER = {}
+REG_PREV = None          # 전날 국면 점수 [위험선호, 유동성·크레딧] — main 이 kv 에서 채운다
+
+
+def series(k):
+    """화면용 계열 파일(public/data/s/<k>.json)에서 [(날짜, 값)] — 파생 계열(공탐지수·RAI·CTA 등)도 여기 있다"""
+    if k not in _SER:
+        try:
+            d = json.loads((config.DATA / 's' / f"{k.replace(':', '_')}.json").read_text(encoding='utf-8'))
+            _SER[k] = [(x, v) for x, v in zip(d['d'], d['v']) if v is not None]
+        except Exception:
+            _SER[k] = []
+    return _SER[k]
+
+
+def move(k, d=0, unit='', how='diff', cd=None):
+    """'16 (−1)' 꼴: 지금 값과 직전 값 대비 변화. how='pct' 면 변화율. 직전 값이 5일 넘게 떨어져 있으면(주간 자료) '전주'를 붙인다"""
+    s = series(k)
+    if not s:
+        return None
+    last = s[-1][1]
+    if len(s) < 2:
+        return f'{num(last, d)}{unit}'
+    (d0, p), (d1, _) = s[-2], s[-1]
+    gap = (date.fromisoformat(d1) - date.fromisoformat(d0)).days
+    tag = '전주 ' if gap >= 5 else ''
+    if how == 'pct' and p:
+        ch = small((last / p - 1) * 100, 1, '%')
+    else:
+        ch = small(last - p, d if cd is None else cd, '%p' if unit in ('%', '%p') else unit if unit in ('bp', 'pt') else '')
+    return f'{last:,.{d}f}'.replace('-', '−') + f'{unit} ({tag}{ch})'
+
+
+def small(ch, d, unit=''):
+    """변화 표시. 반올림하면 0 이 되는 작은 변화는 자리를 두 개까지 늘리고, 그래도 0 이면 '보합'"""
+    cd = d
+    while cd < d + 2 and ch and round(ch, cd) == 0:
+        cd += 1
+    return '보합' if round(ch, cd) == 0 else pts(ch, cd, unit)
+
+
+def zmove(k):
+    """직전 대비 변화가 평소 하루 변화(최근 250번의 표준편차)의 몇 배인가"""
+    s = [v for _, v in series(k)][-251:]
+    if len(s) < 60:
+        return None
+    df = [b - a for a, b in zip(s, s[1:])]
+    m = sum(df) / len(df)
+    sd = (sum((x - m) ** 2 for x in df) / len(df)) ** 0.5
+    return None if not sd else df[-1] / sd
+
+
+BIG = [('sent:krfg', '한국판 공탐지수'), ('sent:cnn', 'CNN 공탐지수'), ('credit:ai_stress', 'AI 크레딧 스트레스'), ('ib:rai', '위험선호 지수'), ('ib:gb_a200', '200일선 위 나라 비율'),
+       ('cta:eq', 'CTA 추정 주식 포지션'), ('cta:volctl', '변동성 제어 노출'), ('kr:credit', '신용잔고'), ('kr:forced_pct', '반대매매 비중'), ('flow:dix', 'DIX'), ('flow:gex', 'GEX'),
+       ('fred:hy_oas', '하이일드 스프레드'), ('fred:ccc_oas', 'CCC 스프레드'), ('drv:k200_basis', 'KOSPI200 베이시스'), ('drv:k200_pc_vol', 'KOSPI200 풋콜'), ('drv:loan_sh', '대차잔고'),
+       ('drv:swap_basis', '달러 조달 비용'), ('px:vix', 'VIX'), ('px:usdkrw', '원/달러'), ('px:us10y', '미 10년 금리')]
+
+
+def big_moves(n=4, cut=1.5):
+    """평소보다 크게 움직인 숫자 위에서 n개"""
+    out = []
+    for k, name in BIG:
+        z = zmove(k)
+        if z is not None and abs(z) >= cut:
+            out.append((abs(z), f"{esc(name)} {'올랐다' if z > 0 else '내렸다'} — 평소 하루 변화의 {abs(z):.1f}배"))
+    return [t for _, t in sorted(out, reverse=True)[:n]]
+
+
 def summary_line(T):
     """맨 위 한 줄: 국면 · 신호 · 심리를 이어 붙인다 (판단·권유 없이 지금 상태만)"""
     R, B, H, fg = T['regime'], T['bottom'], T['hot'], T.get('fg') or {}
     kr, cnn = (fg.get('kr') or {}).get('last'), (fg.get('cnn') or {}).get('last')
-    move = f"{R['cell']} 국면 유지" if R['cell'] == R.get('cell_prev') else f"{R.get('cell_prev')} → {R['cell']} 국면 전환"
+    move_ = f"{R['cell']} 국면 유지" if R['cell'] == R.get('cell_prev') else f"{R.get('cell_prev')} → {R['cell']} 국면 전환"
     sig = f"바닥 신호 {B['count']}/{B['max']}" + (f" · 과열 신호 {H['count']}/{H['max']}" if H['count'] else '')
     mood = f"심리 {fear_word(min(x for x in (kr, cnn) if x is not None))}" if kr is not None or cnn is not None else ''
-    return esc(' · '.join(x for x in (move, sig, mood) if x))
+    return esc(' · '.join(x for x in (move_, sig, mood) if x))
 
 
 def report_text(T, S, shots, now, tag='', link=True):
-    """정기 보고 글 (2026-11-26 사용자: 분량을 늘리고 깔끔하게). 칸 순서: 요약 → 국면 → 시장 → 신호판·바뀐 것 → 심리·수급 → 크레딧·유동성 → IB 지표 → 추세추종 → 파생 → 차트 안내 → 점검 → 링크"""
-    R, B, H, ib, fg = T['regime'], T['bottom'], T['hot'], T.get('ib') or {}, T.get('fg') or {}
-    F, W, C, D = _j('flow.json'), _j('weight.json'), _j('cta.json'), _j('deriv.json')
-    I = _j('ib.json')
-    L = [head(now, tag), summary_line(T)]
+    """정기 보고 글. 2026-11-26 사용자: 분량을 늘리고 깔끔하게 → 숫자마다 직전 값 대비 변화를 붙이고, 점검(수집 실패) 칸은 뺀다.
+    칸: 요약 → 크게 움직인 숫자 → 국면 → 시장 → 신호판 → 오늘 바뀐 것 → 심리·수급 → 크레딧·유동성 → IB 지표 → 추세추종 → 파생 → 차트 안내 → 링크"""
+    R, B, H = T['regime'], T['bottom'], T['hot']
+    Tm = _j('timing.json').get('boards') or {}
+    bp, hp = (Tm.get('bottom') or {}).get('prev'), (Tm.get('hot') or {}).get('prev')
+    L = [head(now, tag), summary_line(T), '<i>괄호 안은 직전 값 대비 변화(주간 자료는 전주 대비)</i>']
 
     def sec(title, lines):
         lines = [x for x in lines if x]
         if lines:
             L.extend(['', f'<b>{title}</b>', *lines])
 
-    sec('국면', [f"{esc(R['cell'])} — 위험선호 {num(R['risk'])} <i>(한 달 전 {num(R.get('risk_prev'))})</i> · 유동성·크레딧 {num(R['liq'])} <i>(한 달 전 {num(R.get('liq_prev'))})</i>"])
+    def j(*xs):
+        return ' · '.join(esc(x) for x in xs if x)
+
+    sec('크게 움직인 숫자', big_moves())
+    rp = REG_PREV
+    sec('국면', [f"{esc(R['cell'])} — 위험선호 {num(R['risk'])}" + (f" ({pts(R['risk'] - rp[0], 0)})" if rp else '') + f" · 유동성·크레딧 {num(R['liq'])}"
+                 + (f" ({pts(R['liq'] - rp[1], 0)})" if rp else '') + f" <i>한 달 전 {num(R.get('risk_prev'))} · {num(R.get('liq_prev'))}</i>"])
     sec('시장', market_lines())
-    sig = [f"바닥 {B['count']}/{B['max']} · 과열 {H['count']}/{H['max']}"]
+    cnt = lambda now_, prev_: f" ({pts(now_ - prev_, 0)})" if prev_ is not None and now_ != prev_ else ' (그대로)' if prev_ is not None else ''
+    sig = [f"바닥 {B['count']}/{B['max']}{cnt(B['count'], bp)} · 과열 {H['count']}/{H['max']}{cnt(H['count'], hp)}"]
     if B['on']:
         sig.append(f"켜진 바닥 신호: {esc(', '.join(B['on']))}")
     if H['on']:
@@ -184,36 +260,27 @@ def report_text(T, S, shots, now, tag='', link=True):
         h_, _, mean = x['text'].partition(' — ')
         ch.append(f"• {esc(h_)}" + (f" <i>— {esc(mean)}</i>" if mean else ''))
     sec('오늘 바뀐 것', ch[:8])
-
-    cr, dx = F.get('credit') or {}, F.get('dix') or {}
-    kr, cnn = (fg.get('kr') or {}).get('last'), (fg.get('cnn') or {}).get('last')
+    F = _j('flow.json')
+    rank = (F.get('credit') or {}).get('forced_rank')
     sec('심리·수급', [
-        f"공탐지수 한국 {num(kr)} · CNN {num(cnn)}" if kr is not None or cnn is not None else '',
-        f"신용잔고 {num(cr.get('last'), 2)}조 (20일 {pct(cr.get('d20'), 1)}) · 반대매매 비중 {num(cr.get('forced_pct'), 1)}% (3년 상위 {num(100 - cr['forced_rank'])}%)" if cr.get('last') is not None and cr.get('forced_rank') is not None else '',
-        f"CTA 추정 주식 {num((C.get('eq') or {}).get('last'), 0, True)}% (1개월 {pts((C.get('eq') or {}).get('m'), 0, '%p')}) · 변동성 제어 노출 {num((C.get('volctl') or {}).get('last'))}%" if C.get('eq') else '',
-        f"DIX 5일 {num(dx.get('avg5'), 1)}% · GEX {num(dx.get('gex'), 2)}" if dx.get('avg5') is not None else ''])
-    hy = next((r for r in (W.get('credit') or {}).get('rows') or [] if r['k'] == 'fred:hy_oas'), None)
-    ccc = next((r for r in (W.get('credit') or {}).get('rows') or [] if r['k'] == 'fred:ccc_oas'), None)
-    liq = W.get('liq') or {}
+        j(f"공탐지수 한국 {move('sent:krfg')}" if series('sent:krfg') else '', f"CNN {move('sent:cnn')}" if series('sent:cnn') else ''),
+        j(f"신용잔고 {move('kr:credit', 2, '조', 'pct')}" if series('kr:credit') else '', f"반대매매 비중 {move('kr:forced_pct', 1, '%')}" if series('kr:forced_pct') else '', f"반대매매 3년 상위 {num(100 - rank)}%" if rank is not None else ''),
+        j(f"CTA 추정 주식 {move('cta:eq', 0, '%')}" if series('cta:eq') else '', f"변동성 제어 노출 {move('cta:volctl', 0, '%')}" if series('cta:volctl') else ''),
+        j(f"DIX {move('flow:dix', 1, '%')}" if series('flow:dix') else '', f"GEX {move('flow:gex', 2)}" if series('flow:gex') else '')])
     sec('크레딧·유동성', [
-        f"하이일드 스프레드 {num(hy['last'], 2)}%p (20일 {pts(hy['chg'] * 100 if hy.get('chg') is not None else None, 0, 'bp')})" + (f" · CCC {num(ccc['last'], 2)}%p" if ccc else '') if hy else '',
-        f"AI 크레딧 스트레스 {num(fg['stress']['last'])}/100" if fg.get('stress') else '',
-        f"연준 순유동성 13주 {pts(liq.get('netliq_13w'), 0)}(십억$) · 금융여건 NFCI {num(liq.get('nfci'), 2)}" if liq.get('netliq_13w') is not None else ''])
-    g, pe = I.get('gb') or {}, I.get('pe') or {}
+        j(f"하이일드 스프레드 {move('fred:hy_oas', 2, '%p')}" if series('fred:hy_oas') else '', f"CCC {move('fred:ccc_oas', 2, '%p')}" if series('fred:ccc_oas') else ''),
+        j(f"AI 크레딧 스트레스 {move('credit:ai_stress')}" if series('credit:ai_stress') else ''),
+        j(f"연준 순유동성 {move('fred:netliq', 0, '십억$')}" if series('fred:netliq') else '', f"금융여건 NFCI {move('fred:nfci', 2, cd=3)}" if series('fred:nfci') else '')])
     sec('IB 지표', [
-        f"위험선호 지수(RAI식) {num(ib['rai']['last'], 2, True)} (20일 전 {num((I.get('rai') or {}).get('prev20'), 2, True)})" if ib.get('rai') else '',
-        f"글로벌 폭: 50·200일선 모두 아래 {num(g.get('both'))}% (신호 88%) · 200일선 위 {num(g.get('a200'))}%" if g else '',
-        f"패닉/유포리아식 {num(pe.get('last'))}/100" if pe.get('last') is not None else ''])
+        j(f"위험선호 지수(RAI식) {move('ib:rai', 2)}" if series('ib:rai') else ''),
+        j(f"글로벌 폭(신호선 88%): 둘 다 아래 {move('ib:gb_both', 0, '%')}" if series('ib:gb_both') else '', f"200일선 위 {move('ib:gb_a200', 0, '%')}" if series('ib:gb_a200') else ''),
+        j(f"패닉/유포리아식 {move('ib:pe')}" if series('ib:pe') else '')])
     L += trend_lines(T)
-    bs, ln, op = D.get('basis') or {}, D.get('loan') or {}, D.get('k200opt') or {}
     sec('파생', [
-        f"KOSPI200 베이시스 {pts(bs.get('basis'), 2, 'pt')} · 옵션 풋콜 5일 {num(op.get('vol5'), 2)}" if bs else '',
-        f"대차잔고 주수 20일 {pct(ln.get('sh_d20'), 1)}" + (f" · 달러 조달(스왑 대용) {pts(D['swap']['basis'], 0, 'bp')}" if D.get('swap') else '') if ln else ''])
+        j(f"KOSPI200 베이시스 {move('drv:k200_basis', 2, 'pt')}" if series('drv:k200_basis') else '', f"옵션 풋콜 {move('drv:k200_pc_vol', 2)}" if series('drv:k200_pc_vol') else ''),
+        j(f"대차잔고 {move('drv:loan_sh', 2, '억 주', 'pct')}" if series('drv:loan_sh') else '', f"달러 조달(스왑 대용) {move('drv:swap_basis', 0, 'bp')}" if series('drv:swap_basis') else '')])
     if shots:
         L += ['', f'<i>아래 차트 {len(shots)}장 — 최근 6개월, 장마다 일간·MoM·QoQ·YoY 변화</i>']
-    bad = fail_lines(S)
-    if bad:
-        L += ['', '<b>점검</b>', *bad]
     if link:
         L += ['', f'<a href="{SITE}">사이트에서 보기</a>']
     text = '\n'.join(L)
@@ -268,6 +335,14 @@ def main():
     c = store.connect()
     c.execute('CREATE TABLE IF NOT EXISTS alerted (key TEXT PRIMARY KEY, at TEXT)')
     T, S = J('today.json'), J('status.json')
+    global REG_PREV
+    hist = kv(c, 'regime_hist') or {}
+    today = now.date().isoformat()
+    prev_day = max((d for d in hist if d < today), default=None)
+    REG_PREV = hist.get(prev_day)
+    hist[today] = [T['regime']['risk'], T['regime']['liq']]
+    if not dry and not preview:
+        kv(c, 'regime_hist', dict(sorted(hist.items())[-60:]))
     on = (preview or config.key('MACRO_TG_ENABLED') == '1') and config.key('MACRO_TG_TOKEN') and config.key('MACRO_TG_CHAT')
     tag = '[미리보기]' if preview else ''
 
