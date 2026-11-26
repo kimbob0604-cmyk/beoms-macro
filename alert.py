@@ -95,17 +95,120 @@ def trend_lines(T):
     st = ' · '.join(f"{esc(x['name'])} {esc(x['label'])}" + (f"(분산일 {x['dd']})" if x['label'] != '조정' else f"(랠리 {x['rday']}일째)" if x['rday'] else '') for x in tf['idx'])
     tt = tf.get('tt') or {}
     t2 = ' · '.join(f"{'한국' if m == 'kr' else '미국'} {v['tt']}%" for m, v in tt.items() if v.get('tt') is not None)
-    return ['', '<b>추세추종</b>', f'• 시장 상태(IBD식): {st}'] + ([f'• 트렌드 템플릿 통과 비율: {t2}'] if t2 else [])
+    return ['', '<b>추세추종</b>', f'시장 상태(IBD식) {st}'] + ([f'트렌드 템플릿 통과 {t2}'] if t2 else [])
+
+
+def _j(name):
+    try:
+        return J(name)
+    except Exception:
+        return {}
+
+
+def pct(v, d=2):
+    return '–' if v is None else f'{v:+.{d}f}%'.replace('-', '−')
+
+
+def pts(v, d=2, u=''):
+    return '–' if v is None else f'{v:+.{d}f}{u}'.replace('-', '−')
+
+
+def big(v, d=0):
+    return '–' if v is None else f'{v:,.{d}f}'
+
+
+def fear_word(v):
+    return '' if v is None else '극단 공포' if v < 25 else '공포' if v < 45 else '중립' if v < 55 else '탐욕' if v < 75 else '극단 탐욕'
+
+
+def market_lines():
+    """오늘 한국 마감 · 전일 미국 마감 · 금리·환율·원자재 (크로스에셋 표에서)"""
+    rows = {r['k']: r for r in (_j('monitor.json').get('rows') or [])}
+
+    def q(k, name=None, d=0, diff=False, unit=''):
+        r = rows.get(k)
+        if not r:
+            return None
+        ch = pts(r['d1'], 2, unit + ('p' if unit == '%' else '')) if diff else pct(r['d1'])      # 금리는 %p
+        return f"{name or r['name']} {big(r['last'], d)}{unit if diff else ''} {ch}"
+    L = []
+    kr = [x for x in (q('px:kospi', 'KOSPI'), q('px:kosdaq', 'KOSDAQ', 1)) if x]
+    us = [x for x in (q('px:spx', 'S&P500'), q('px:ndx', '나스닥'), q('px:sox', '반도체지수')) if x]
+    rate = [x for x in (q('px:vix', 'VIX', 1, True), q('px:us10y', '미 10년', 2, True, '%'), q('px:dxy', '달러지수', 1)) if x]
+    asset = [x for x in (q('px:usdkrw', '원/달러', 1), q('px:wti', 'WTI', 1), q('px:gold', '금'), q('px:btc', '비트코인')) if x]
+    kd = (rows.get('px:kospi') or {}).get('date', '')
+    ud = (rows.get('px:spx') or {}).get('date', '')
+    if kr:
+        L.append(f"한국({kd[5:].replace('-', '/')}) " + ' · '.join(kr))
+    if us:
+        L.append(f"미국({ud[5:].replace('-', '/')}) " + ' · '.join(us))
+    if rate:
+        L.append(' · '.join(rate))
+    if asset:
+        L.append(' · '.join(asset))
+    return [esc(x) for x in L]
+
+
+def summary_line(T):
+    """맨 위 한 줄: 국면 · 신호 · 심리를 이어 붙인다 (판단·권유 없이 지금 상태만)"""
+    R, B, H, fg = T['regime'], T['bottom'], T['hot'], T.get('fg') or {}
+    kr, cnn = (fg.get('kr') or {}).get('last'), (fg.get('cnn') or {}).get('last')
+    move = f"{R['cell']} 국면 유지" if R['cell'] == R.get('cell_prev') else f"{R.get('cell_prev')} → {R['cell']} 국면 전환"
+    sig = f"바닥 신호 {B['count']}/{B['max']}" + (f" · 과열 신호 {H['count']}/{H['max']}" if H['count'] else '')
+    mood = f"심리 {fear_word(min(x for x in (kr, cnn) if x is not None))}" if kr is not None or cnn is not None else ''
+    return esc(' · '.join(x for x in (move, sig, mood) if x))
 
 
 def report_text(T, S, shots, now, tag='', link=True):
-    B, H = T['bottom'], T['hot']
-    L = [head(now, tag), '', regime_line(T), '', '<b>지금 숫자</b>', *snapshot(T)]
+    """정기 보고 글 (2026-11-26 사용자: 분량을 늘리고 깔끔하게). 칸 순서: 요약 → 국면 → 시장 → 신호판·바뀐 것 → 심리·수급 → 크레딧·유동성 → IB 지표 → 추세추종 → 파생 → 차트 안내 → 점검 → 링크"""
+    R, B, H, ib, fg = T['regime'], T['bottom'], T['hot'], T.get('ib') or {}, T.get('fg') or {}
+    F, W, C, D = _j('flow.json'), _j('weight.json'), _j('cta.json'), _j('deriv.json')
+    I = _j('ib.json')
+    L = [head(now, tag), summary_line(T)]
+
+    def sec(title, lines):
+        lines = [x for x in lines if x]
+        if lines:
+            L.extend(['', f'<b>{title}</b>', *lines])
+
+    sec('국면', [f"{esc(R['cell'])} — 위험선호 {num(R['risk'])} <i>(한 달 전 {num(R.get('risk_prev'))})</i> · 유동성·크레딧 {num(R['liq'])} <i>(한 달 전 {num(R.get('liq_prev'))})</i>"])
+    sec('시장', market_lines())
+    sig = [f"바닥 {B['count']}/{B['max']} · 과열 {H['count']}/{H['max']}"]
     if B['on']:
-        L.append(f"<i>켜진 바닥 신호: {esc(', '.join(B['on']))}</i>")
+        sig.append(f"켜진 바닥 신호: {esc(', '.join(B['on']))}")
     if H['on']:
-        L.append(f"<i>켜진 과열 신호: {esc(', '.join(H['on']))}</i>")
+        sig.append(f"켜진 과열 신호: {esc(', '.join(H['on']))}")
+    sec('신호판', sig)
+    ch = []
+    for x in T.get('changes') or []:
+        h_, _, mean = x['text'].partition(' — ')
+        ch.append(f"• {esc(h_)}" + (f" <i>— {esc(mean)}</i>" if mean else ''))
+    sec('오늘 바뀐 것', ch[:8])
+
+    cr, dx = F.get('credit') or {}, F.get('dix') or {}
+    kr, cnn = (fg.get('kr') or {}).get('last'), (fg.get('cnn') or {}).get('last')
+    sec('심리·수급', [
+        f"공탐지수 한국 {num(kr)} · CNN {num(cnn)}" if kr is not None or cnn is not None else '',
+        f"신용잔고 {num(cr.get('last'), 2)}조 (20일 {pct(cr.get('d20'), 1)}) · 반대매매 비중 {num(cr.get('forced_pct'), 1)}% (3년 상위 {num(100 - cr['forced_rank'])}%)" if cr.get('last') is not None and cr.get('forced_rank') is not None else '',
+        f"CTA 추정 주식 {num((C.get('eq') or {}).get('last'), 0, True)}% (1개월 {pts((C.get('eq') or {}).get('m'), 0, '%p')}) · 변동성 제어 노출 {num((C.get('volctl') or {}).get('last'))}%" if C.get('eq') else '',
+        f"DIX 5일 {num(dx.get('avg5'), 1)}% · GEX {num(dx.get('gex'), 2)}" if dx.get('avg5') is not None else ''])
+    hy = next((r for r in (W.get('credit') or {}).get('rows') or [] if r['k'] == 'fred:hy_oas'), None)
+    ccc = next((r for r in (W.get('credit') or {}).get('rows') or [] if r['k'] == 'fred:ccc_oas'), None)
+    liq = W.get('liq') or {}
+    sec('크레딧·유동성', [
+        f"하이일드 스프레드 {num(hy['last'], 2)}%p (20일 {pts(hy['chg'] * 100 if hy.get('chg') is not None else None, 0, 'bp')})" + (f" · CCC {num(ccc['last'], 2)}%p" if ccc else '') if hy else '',
+        f"AI 크레딧 스트레스 {num(fg['stress']['last'])}/100" if fg.get('stress') else '',
+        f"연준 순유동성 13주 {pts(liq.get('netliq_13w'), 0)}(십억$) · 금융여건 NFCI {num(liq.get('nfci'), 2)}" if liq.get('netliq_13w') is not None else ''])
+    g, pe = I.get('gb') or {}, I.get('pe') or {}
+    sec('IB 지표', [
+        f"위험선호 지수(RAI식) {num(ib['rai']['last'], 2, True)} (20일 전 {num((I.get('rai') or {}).get('prev20'), 2, True)})" if ib.get('rai') else '',
+        f"글로벌 폭: 50·200일선 모두 아래 {num(g.get('both'))}% (신호 88%) · 200일선 위 {num(g.get('a200'))}%" if g else '',
+        f"패닉/유포리아식 {num(pe.get('last'))}/100" if pe.get('last') is not None else ''])
     L += trend_lines(T)
+    bs, ln, op = D.get('basis') or {}, D.get('loan') or {}, D.get('k200opt') or {}
+    sec('파생', [
+        f"KOSPI200 베이시스 {pts(bs.get('basis'), 2, 'pt')} · 옵션 풋콜 5일 {num(op.get('vol5'), 2)}" if bs else '',
+        f"대차잔고 주수 20일 {pct(ln.get('sh_d20'), 1)}" + (f" · 달러 조달(스왑 대용) {pts(D['swap']['basis'], 0, 'bp')}" if D.get('swap') else '') if ln else ''])
     if shots:
         L += ['', f'<i>아래 차트 {len(shots)}장 — 최근 6개월, 장마다 일간·MoM·QoQ·YoY 변화</i>']
     bad = fail_lines(S)
@@ -118,13 +221,14 @@ def report_text(T, S, shots, now, tag='', link=True):
 
 
 def signal_text(T, new_b, new_h, now, tag=''):
+    """수시 알림: 바닥·과열 신호가 새로 켜졌을 때. 정기 보고와 같은 모양으로 짧게"""
     B, H = T['bottom'], T['hot']
-    L = [head(now, tag), '']
+    L = [head(now, tag), summary_line(T)]
     if new_b:
-        L += [f"<b>바닥 신호 새로 켜짐</b> → {B['count']}/{B['max']}", *[f'• {esc(x)}' for x in new_b], '<i>과매도 쪽 조건이 하나 더 켜졌다 — 타이밍 탭에서 신호 뒤 수익률 확인</i>', '']
+        L += ['', f"<b>바닥 신호 새로 켜짐</b> → {B['count']}/{B['max']}", *[f'• {esc(x)}' for x in new_b], '<i>과매도 쪽 조건이 하나 더 켜졌다 — 타이밍 탭에서 신호 뒤 수익률 확인</i>']
     if new_h:
-        L += [f"<b>과열 신호 새로 켜짐</b> → {H['count']}/{H['max']}", *[f'• {esc(x)}' for x in new_h], '<i>과열 쪽 조건이 하나 더 켜졌다 — 비중 줄일 자리인지 확인</i>', '']
-    L += [regime_line(T), '', *snapshot(T), '', f'<a href="{SITE}timing.html">타이밍 탭에서 보기</a>']
+        L += ['', f"<b>과열 신호 새로 켜짐</b> → {H['count']}/{H['max']}", *[f'• {esc(x)}' for x in new_h], '<i>과열 쪽 조건이 하나 더 켜졌다 — 비중 줄일 자리인지 확인</i>']
+    L += ['', '<b>시장</b>', *market_lines(), '', '<b>지금 숫자</b>', *snapshot(T), '', f'<a href="{SITE}timing.html">타이밍 탭에서 보기</a>']
     return '\n'.join(L)
 
 
