@@ -1,0 +1,34 @@
+# 시계: 30분마다 daily.yml 을 부른다. GitHub 시간 예약(cron)이 붐비는 시간대에 몇 시간씩 건너뛰어(2026-11-26: 하루 2~3번만 돎)
+# 예약 대신 이 작업이 5시간 40분 동안 깨어 있으며 직접 부르고, 끝날 때 자기 자신을 다시 부른다(대시보드 cloud-data 와 같은 방식).
+# 사슬이 끊기면 아래 예약(4시간마다)이 다시 잇는다. 공개 저장소라 Actions 시간은 무료.
+name: tick
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 */4 * * *'
+
+permissions:
+  actions: write
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: 이미 도는 시계가 있으면 끝
+        id: dup
+        run: |
+          n=$(gh run list -R "$GITHUB_REPOSITORY" --workflow tick.yml --status in_progress --json databaseId -q "[.[] | select(.databaseId != ${{ github.run_id }})] | length")
+          echo "다른 시계 $n 개"; echo "skip=$([ "$n" -gt 0 ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
+      - name: 30분마다 daily 부르기
+        if: steps.dup.outputs.skip == '0'
+        run: |
+          started=$(date +%s)
+          while [ $(( $(date +%s) - started )) -lt $(( 340 * 60 )) ]; do
+            gh workflow run daily.yml -R "$GITHUB_REPOSITORY" --ref main && echo "$(TZ=Asia/Seoul date +%H:%M) daily 부름" || echo "부르기 실패"
+            sleep 1800
+          done
+          gh workflow run tick.yml -R "$GITHUB_REPOSITORY" --ref main && echo "다음 시계를 부르고 끝"
