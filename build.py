@@ -101,8 +101,11 @@ def regime(S):
     now = score()
     ago = S['px:spx'].index[-21]
     old = score(ago)
+    d1 = S['px:spx'].index[-2]                  # 직전 거래일 — 알림의 '전날 대비' (2026-11-26 사용자: 매일 변화를 보이게)
+    y = score(d1)
     cell = lambda rk, lq: ('순항' if lq >= 50 else '과열·균열') if rk >= 50 else ('눌림' if lq >= 50 else '위기')
     return {'risk': now[0], 'liq': now[1], 'cell': cell(now[0], now[1]), 'risk_prev': old[0], 'liq_prev': old[1], 'cell_prev': cell(old[0], old[1]), 'prev_date': ago,
+            'risk_d1': y[0], 'liq_d1': y[1], 'cell_d1': cell(y[0], y[1]), 'd1_date': d1,
             'risk_parts': dict(zip(['고베타÷저변동', '경기소비÷필수소비', '동일가중÷시총가중', '신흥÷미국', 'VIX(역)', '60일선 위 종목 비율'], now[2])),
             'liq_parts': now[3]}
 

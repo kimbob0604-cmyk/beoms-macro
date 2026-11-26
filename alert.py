@@ -88,14 +88,21 @@ def fail_lines(S):
 
 
 def trend_lines(T):
-    """추세추종 탭 요약 두 줄: IBD식 시장 상태 + 트렌드 템플릿 통과 비율 (2026-11-24 추가)"""
+    """추세추종 칸: IBD식 시장 상태(분산일·랠리)와 트렌드 템플릿 통과 비율 — 직전 거래일 대비를 붙인다(2026-11-26 사용자)"""
     tf = T.get('trend') or {}
     if not tf.get('idx'):
         return []
-    st = ' · '.join(f"{esc(x['name'])} {esc(x['label'])}" + (f"(분산일 {x['dd']})" if x['label'] != '조정' else f"(랠리 {x['rday']}일째)" if x['rday'] else '') for x in tf['idx'])
+    L = ['', '<b>추세추종</b>']
+    for x in tf['idx']:
+        lab = esc(x['label']) if not x.get('label_p') or x['label_p'] == x['label'] else f"<b>{esc(x['label_p'])} → {esc(x['label'])}</b>"
+        dd = f"분산일 {x['dd']}" + (f" ({pts(x['dd'] - x['dd_p'], 0)})" if x.get('dd_p') is not None and x['dd'] != x['dd_p'] else '')
+        extra = [dd] + ([f"랠리 {x['rday']}일째"] if x.get('rday') else []) + ([f"주봉 {x['stage']}단계" + (f"(지난주 {x['stage_p']})" if x.get('stage_p') not in (None, x['stage']) else '')] if x.get('stage') else [])
+        L.append(f"{esc(x['name'])} {lab} — {esc(' · '.join(extra))}")
     tt = tf.get('tt') or {}
-    t2 = ' · '.join(f"{'한국' if m == 'kr' else '미국'} {v['tt']}%" for m, v in tt.items() if v.get('tt') is not None)
-    return ['', '<b>추세추종</b>', f'시장 상태(IBD식) {st}'] + ([f'트렌드 템플릿 통과 {t2}'] if t2 else [])
+    t2 = ' · '.join(f"{'한국' if m == 'kr' else '미국'} {v['tt']:.1f}%" + (f" ({small(v['tt'] - v['tt_p'], 1, '%p')})" if v.get('tt_p') is not None else '') for m, v in tt.items() if v.get('tt') is not None)
+    if t2:
+        L.append(f'트렌드 템플릿 통과 {t2}')
+    return L
 
 
 def _j(name):
@@ -150,7 +157,6 @@ def market_lines():
 
 
 _SER = {}
-REG_PREV = None          # 전날 국면 점수 [위험선호, 유동성·크레딧] — main 이 kv 에서 채운다
 
 
 def series(k):
@@ -217,6 +223,42 @@ def big_moves(n=4, cut=1.5):
     return [t for _, t in sorted(out, reverse=True)[:n]]
 
 
+# 정기 보고 차트(snap.SHOTS)마다 무엇을 보고 고를지: (화면, 칸) → (계열, '오늘 바뀐 것' 문장에서 찾을 말)
+CHART_KEY = {('timing', 'c-count'): (None, '바닥 신호'), ('timing', 'c-adr'): ('kr:adr20', 'ADR'), ('timing', 'c-vix'): ('px:vix', 'VIX'), ('timing', 'c-vkospi'): ('vol:vkospi', 'VKOSPI'),
+             ('timing', 'fg-kr'): ('sent:krfg', '공탐지수'), ('ib', 'rai'): ('ib:rai', '위험선호'), ('flow', 'cta'): ('cta:spx', 'CTA'), ('flow', 'credit'): ('kr:credit', '신용잔고'),
+             ('credit', 'stress'): ('credit:ai_stress', '스트레스'), ('weight', 'credit'): ('fred:hy_oas', '하이일드'), ('trend', 'tt-kr'): ('tf:kr:tt', '트렌드'), ('trend', 'tt-us'): ('tf:us:tt', '트렌드')}
+CORE = [('ib', 'rai'), ('timing', 'c-count'), ('flow', 'cta')]      # 움직인 것이 적은 날에도 이 셋까지는 채운다
+
+
+def pick_charts(T, shots, lo=3, hi=6, cut=1.2):
+    """그날 움직인 차트만 고른다(2026-11-26 사용자: 필요한 그래프만). 기준: '오늘 바뀐 것'에 나온 지표, 평소 하루 변화의 1.2배 넘게 움직인 지표,
+    바닥·과열 신호 개수가 바뀐 날의 신호 개수. 모자라면 CORE 로 채우고 많으면 크게 움직인 순으로 hi 개. → [(SHOTS 줄, 보낸 이유)]"""
+    texts = ' '.join(x['text'] for x in T.get('changes') or [])
+    Tm = _j('timing.json').get('boards') or {}
+    moved = any((Tm.get(b) or {}).get('count') != (Tm.get(b) or {}).get('prev') for b in ('bottom', 'hot'))
+    scored = []
+    for sh in shots:
+        key, word = CHART_KEY.get((sh[0], sh[1]), (None, None))
+        z = zmove(key) if key else None
+        why, score = None, 0
+        if word and word in texts:
+            why, score = '오늘 기준선을 넘었다', 10
+        if sh[1] == 'c-count' and moved:
+            why, score = '신호 개수가 바뀌었다', 10
+        if z is not None and abs(z) >= cut and abs(z) + (score or 0) > score:
+            why, score = why or f"평소 하루 변화의 {abs(z):.1f}배 움직였다", max(score, abs(z))
+        if why:
+            scored.append((score, sh, why))
+    out = [(sh, why) for _, sh, why in sorted(scored, key=lambda t: -t[0])[:hi]]
+    for core in CORE:
+        if len(out) >= lo:
+            break
+        sh = next((x for x in shots if (x[0], x[1]) == core), None)
+        if sh and all(sh is not o[0] for o in out):
+            out.append((sh, '늘 보는 차트'))
+    return out
+
+
 def summary_line(T):
     """맨 위 한 줄: 국면 · 신호 · 심리를 이어 붙인다 (판단·권유 없이 지금 상태만)"""
     R, B, H, fg = T['regime'], T['bottom'], T['hot'], T.get('fg') or {}
@@ -244,9 +286,9 @@ def report_text(T, S, shots, now, tag='', link=True):
         return ' · '.join(esc(x) for x in xs if x)
 
     sec('크게 움직인 숫자', big_moves())
-    rp = REG_PREV
-    sec('국면', [f"{esc(R['cell'])} — 위험선호 {num(R['risk'])}" + (f" ({pts(R['risk'] - rp[0], 0)})" if rp else '') + f" · 유동성·크레딧 {num(R['liq'])}"
-                 + (f" ({pts(R['liq'] - rp[1], 0)})" if rp else '') + f" <i>한 달 전 {num(R.get('risk_prev'))} · {num(R.get('liq_prev'))}</i>"])
+    rp = [R['risk_d1'], R['liq_d1']] if R.get('risk_d1') is not None else None      # 직전 거래일 점수(build.regime)
+    sec('국면', [f"{esc(R['cell'])} — 위험선호 {num(R['risk'])}" + (f" ({small(R['risk'] - rp[0], 0)})" if rp else '') + f" · 유동성·크레딧 {num(R['liq'])}"
+                 + (f" ({small(R['liq'] - rp[1], 0)})" if rp else '') + f" <i>한 달 전 {num(R.get('risk_prev'))} · {num(R.get('liq_prev'))}</i>"])
     sec('시장', market_lines())
     cnt = lambda now_, prev_: f" ({pts(now_ - prev_, 0)})" if prev_ is not None and now_ != prev_ else ' (그대로)' if prev_ is not None else ''
     sig = [f"바닥 {B['count']}/{B['max']}{cnt(B['count'], bp)} · 과열 {H['count']}/{H['max']}{cnt(H['count'], hp)}"]
@@ -280,7 +322,7 @@ def report_text(T, S, shots, now, tag='', link=True):
         j(f"KOSPI200 베이시스 {move('drv:k200_basis', 2, 'pt')}" if series('drv:k200_basis') else '', f"옵션 풋콜 {move('drv:k200_pc_vol', 2)}" if series('drv:k200_pc_vol') else ''),
         j(f"대차잔고 {move('drv:loan_sh', 2, '억 주', 'pct')}" if series('drv:loan_sh') else '', f"달러 조달(스왑 대용) {move('drv:swap_basis', 0, 'bp')}" if series('drv:swap_basis') else '')])
     if shots:
-        L += ['', f'<i>아래 차트 {len(shots)}장 — 최근 6개월, 장마다 일간·MoM·QoQ·YoY 변화</i>']
+        L += ['', f'<i>아래 차트 {len(shots)}장 — 오늘 움직인 것만 골랐다. 최근 6개월, 장마다 일간·MoM·QoQ·YoY 변화</i>']
     if link:
         L += ['', f'<a href="{SITE}">사이트에서 보기</a>']
     text = '\n'.join(L)
@@ -335,14 +377,6 @@ def main():
     c = store.connect()
     c.execute('CREATE TABLE IF NOT EXISTS alerted (key TEXT PRIMARY KEY, at TEXT)')
     T, S = J('today.json'), J('status.json')
-    global REG_PREV
-    hist = kv(c, 'regime_hist') or {}
-    today = now.date().isoformat()
-    prev_day = max((d for d in hist if d < today), default=None)
-    REG_PREV = hist.get(prev_day)
-    hist[today] = [T['regime']['risk'], T['regime']['liq']]
-    if not dry and not preview:
-        kv(c, 'regime_hist', dict(sorted(hist.items())[-60:]))
     on = (preview or config.key('MACRO_TG_ENABLED') == '1') and config.key('MACRO_TG_TOKEN') and config.key('MACRO_TG_CHAT')
     tag = '[미리보기]' if preview else ''
 
@@ -370,7 +404,9 @@ def main():
     for kind, text, want in jobs:
         try:
             if kind == 'report':
-                shots = snap.shoot()
+                picked = pick_charts(T, snap.SHOTS)
+                why = {f'{sh[0]}-{sh[1]}': w for sh, w in picked}
+                shots = [(f, f"{cap}\n보낸 이유: {why.get(Path(f).stem.split('-', 1)[1], '')}") for f, cap in snap.shoot([sh for sh, _ in picked])]
                 text = report_text(T, S, shots, now, tag)
             else:
                 shots = snap.shoot([x for x in snap.SHOTS if (x[0], x[1]) in {(p, s) for p, s, _ in want}])

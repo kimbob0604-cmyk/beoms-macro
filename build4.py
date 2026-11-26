@@ -153,6 +153,8 @@ def build(S, M, dump, now, c):
             L['rows'] = L['rows'][:60]
     dump('trend.json', {'built': now, 'idx': idx, 'breadth': br, 'lists': lists,
                         'rules': {'ftd_gain': FTD_GAIN, 'dd_drop': DD_DROP, 'dd_life': DD_LIFE, 'corr_dd': round((1 - CORR_DD) * 100), 'corr_dist': CORR_DIST, 'press': PRESS}})
-    summary = {'idx': [{'name': x['name'], 'label': x['label'], 'dd': x['dd'], 'rday': x['rday'], 'stage': x['stage']} for x in idx],
-               'tt': {m: {'tt': b['tt'], 'date': b['date']} for m, b in br.items()}}
+    p2 = lambda o, k: (o[k]['v'][-2] if len(o[k]['v']) > 1 else None)       # 직전 값 (알림의 전날 대비)
+    summary = {'idx': [{'name': x['name'], 'label': x['label'], 'dd': x['dd'], 'rday': x['rday'], 'stage': x['stage'],
+                        'label_p': STATE.get(int(p2(x, 'state_s'))) if p2(x, 'state_s') is not None else None, 'dd_p': p2(x, 'dd_s'), 'stage_p': p2(x, 'stage_s')} for x in idx],
+               'tt': {m: {'tt': b['tt'], 'date': b['date'], 'tt_p': b['series']['v'][-2] if len(b['series']['v']) > 1 else None} for m, b in br.items()}}
     return extra, summary
