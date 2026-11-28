@@ -30,6 +30,10 @@ on:
         description: 미리보기를 그룹방에도 보낸다
         type: boolean
         default: false
+      chartbook:
+        description: 차트북(야데니식 17장)을 [미리보기]로 지금 한 번 전부 보낸다
+        type: boolean
+        default: false
 
 permissions:
   contents: write        # 릴리스 첨부(DB 사본)
@@ -83,6 +87,9 @@ jobs:
       - name: 알림 미리보기
         if: inputs.preview
         run: python3 alert.py --preview ${{ inputs.group && '--group' || '' }}
+      - name: 차트북 미리보기
+        if: inputs.chartbook
+        run: python3 chartbook.py send --all --preview
       - name: DB 올리기
         if: steps.fresh.outputs.skip != 'true' && !inputs.dry
         run: python3 sync.py push

@@ -5,3 +5,4 @@ yfinance>=1.0
 cryptography>=42
 playwright
 lxml
+matplotlib>=3.8

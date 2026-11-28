@@ -112,3 +112,21 @@ python3 alert.py --dry                # 텔레그램으로 보낼 내용 미리 
 - **알림**: 2026-11-20 켬 — 봇 `@Beomjun_Macro_bot`, 1:1 대화로 보낸다(클라우드 실행 뒤, 새로 바뀐 것만). 클라우드는 `MACRO_TG_TOKEN` 이 있으면 켠다 — 끄려면 그 비밀값을 지운다(`MACRO_TG_ENABLED` 비밀값은 쓰지 않는다: 값 '1' 이 실행 기록의 숫자 1 을 모두 가려서). 맥에서 직접 보낼 때만 `.env` 에 `MACRO_TG_ENABLED=1`.
 - **비밀값**(직접 등록): `KRX_API_KEY` · `FRED_KEY` · `ECOS_KEY` · `KIS_APP_KEY` · `KIS_APP_SECRET` · `MACRO_PASS` · `MACRO_DB_PASS`. 알림: `MACRO_TG_ENABLED=1` · `MACRO_TG_TOKEN` · `MACRO_TG_CHAT`. 맥에서 `sync.py`·`site_crypt.py` 를 쓰려면 이 폴더 `.env` 에도 두 암호를 적는다.
 - 남은 순서: 비밀값 등록(`gh secret set <이름> -R kimbob0604-cmyk/beoms-macro`) + 이 폴더 `.env` 에 `MACRO_PASS`·`MACRO_DB_PASS` → 맥에서 `sync.py push` → 워크플로 `dry` 로 출처 시험 → 실제 실행·배포 확인 → 맥 예약 작업 끄기 → 알림 봇·방 정해 켜기.
+
+## 차트북 (야데니식 다시 그리기, 2026-11-28~)
+
+야데니 'Selected Daily Markets' 의 **그림 방식만** 따와 공개 시세(야후·FRED)로 직접 그린다. 원본 이미지는 쓰지 않는다.
+따온 것: 로그 축 · 50·200일선 · 고점 대비 −10% 조정 / −20% 약세장 음영 · 미국 경기침체 음영 · 범례에 '날짜 = 값' · 비율(A÷B) · 기준일 경로 겹치기.
+
+```bash
+python3 chartbook.py draw            # _chartbook/ 에 17장 + index.json (위클리·노션용 밝은 바탕은 --light)
+python3 chartbook.py text            # 텔레그램으로 보낼 글·설명만 찍기
+python3 chartbook.py send --all --preview   # 지금 [미리보기]로 전부 보내기 (MACRO_TG_TOKEN·MACRO_TG_CHAT 필요)
+gh workflow run daily.yml -f chartbook=true # 클라우드에서 미리보기
+```
+
+- 17장: S&P500·KOSPI(50·200일선, 조정·약세장 음영) · 업종 11개(1주·연초 이후) · S&P 동일÷시총 · 나스닥100 시총÷동일 · MAGS÷XMAG · SPMO÷SPY · 성장÷가치 · 중소형÷S&P · S&P600÷러셀 · 미국÷미국 밖 · KOSDAQ÷KOSPI · 다우 vs 운송 · 구리 vs 브렌트 · 10년 금리 vs TLT · 나스닥100 vs 엔/달러 · 넷스케이프 뒤 vs 챗GPT 뒤.
+- 보내는 때(`run_daily.py` → `chartbook.py auto`): 07시(한국시간)부터 90분 안, **미국 새 종가가 들어온 첫 실행**에 한 번. 일·월요일 아침과 미국 휴장 다음 날은 건너뛴다. 기록은 macro.db `kv('chartbook')`.
+- 평일: 글(17개 한 줄씩 + 그날 일어난 것) + **일이 생긴 차트만**(S&P500 은 늘, 3~6장). 토·일: 전부(위클리 차트북).
+- '일이 생긴 것': 50·200일선 돌파(그 전 10일 중 8일 넘게 반대편이었을 때만), 골든·데드크로스, 1년 최고·최저(지난 10일 안에 없었을 때), 하루 움직임이 평소(1년 표준편차)의 2.5배 넘음, 조정·약세장 진입·끝. 지난 130거래일에 돌려 보니 하루 평균 1.7장.
+- 가격은 배당 조정 없는 종가(가격 지수끼리 비교). 클라우드에는 한글 글꼴이 없어 그릴 때 `fonts-nanum` 을 한 번 깐다.

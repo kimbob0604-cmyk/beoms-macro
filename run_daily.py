@@ -35,6 +35,9 @@ def main():
             print(f'{name}: {"정상" if not r.returncode else f"실패({r.returncode})"}')
         if jobs:      # 알림(꺼져 있으면 아무것도 보내지 않는다)
             subprocess.run([sys.executable, 'alert.py'], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT, timeout=600)   # 정기 보고는 차트 캡처로 1~2분
+            f.write(f'\n[{datetime.now():%H:%M:%S}] chartbook\n')
+            f.flush()
+            subprocess.run([sys.executable, 'chartbook.py', 'auto'], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT, timeout=600)   # 07시대 하루 한 번(야데니식 차트북)
     if '--report' in sys.argv:      # 출처별로 됐는지·막혔는지 (클라우드 시험용)
         import sqlite3
         c = sqlite3.connect(ROOT / 'db' / 'macro.db')
